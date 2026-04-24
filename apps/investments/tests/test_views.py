@@ -107,3 +107,19 @@ def test_anonymous_redirects_to_login():
     r = c.get(reverse("investments:list"))
     assert r.status_code == 302
     assert "/login/" in r["Location"]
+
+
+def test_delete_investment_account_cascades(alice, alice_client):
+    acc = InvestmentAccount.objects.create(user=alice, source="manual", broker="F", name="ToDelete")
+    Holding.objects.create(investment_account=acc, symbol="AAPL", shares=Decimal("1"),
+                            current_price=Decimal("100"), market_value=Decimal("100"))
+    r = alice_client.post(reverse("investments:delete_account", args=[acc.id]))
+    assert r.status_code == 302
+    assert InvestmentAccount.objects.filter(pk=acc.id).count() == 0
+    assert Holding.objects.filter(investment_account_id=acc.id).count() == 0
+
+
+def test_delete_investment_account_forbidden_for_other_user(alice, bob, bob_client):
+    acc = InvestmentAccount.objects.create(user=alice, source="manual", broker="F", name="X")
+    r = bob_client.post(reverse("investments:delete_account", args=[acc.id]))
+    assert r.status_code == 404

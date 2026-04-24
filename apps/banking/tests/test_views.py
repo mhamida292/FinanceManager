@@ -137,3 +137,27 @@ def test_rename_institution_persists_and_isolates(alice, bob, alice_client, bob_
     assert response.status_code == 404
     inst.refresh_from_db()
     assert inst.display_name == "Family Banks"
+
+
+def test_delete_institution_cascades(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="ToDelete", access_url="https://x")
+    Account.objects.create(institution=inst, name="Acc", type="checking", external_id="A-1")
+    r = alice_client.post(reverse("banking:delete_institution", args=[inst.id]))
+    assert r.status_code == 302
+    assert Institution.objects.filter(pk=inst.id).count() == 0
+    assert Account.objects.filter(institution_id=inst.id).count() == 0
+
+
+def test_delete_institution_forbidden_for_other_user(alice, bob, bob_client):
+    inst = Institution.objects.create(user=alice, name="X", access_url="https://x")
+    r = bob_client.post(reverse("banking:delete_institution", args=[inst.id]))
+    assert r.status_code == 404
+    assert Institution.objects.filter(pk=inst.id).count() == 1
+
+
+def test_delete_account_isolation(alice, bob, bob_client):
+    inst = Institution.objects.create(user=alice, name="X", access_url="https://x")
+    acc = Account.objects.create(institution=inst, name="Acc", type="checking", external_id="A-1")
+    r = bob_client.post(reverse("banking:delete_account", args=[acc.id]))
+    assert r.status_code == 404
+    assert Account.objects.filter(pk=acc.id).count() == 1
