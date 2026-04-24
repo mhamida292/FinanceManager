@@ -42,11 +42,11 @@ def test_list_empty(alice_client):
 
 
 def test_list_shows_only_own(alice, bob, alice_client):
-    Asset.objects.create(user=alice, kind="manual", name="Alice's car", current_value=Decimal("18000"))
-    Asset.objects.create(user=bob, kind="manual", name="Bob's painting", current_value=Decimal("5000"))
+    Asset.objects.create(user=alice, kind="manual", name="Alice Camry", current_value=Decimal("18000"))
+    Asset.objects.create(user=bob, kind="manual", name="Bob Monet", current_value=Decimal("5000"))
     r = alice_client.get(reverse("assets:list"))
-    assert b"Alice's car" in r.content
-    assert b"Bob's painting" not in r.content
+    assert b"Alice Camry" in r.content
+    assert b"Bob Monet" not in r.content
 
 
 def test_add_manual_asset(alice_client):

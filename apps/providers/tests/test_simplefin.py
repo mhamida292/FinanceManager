@@ -187,12 +187,12 @@ def test_fetch_investment_accounts_handles_robinhood_style_payload():
     assert len(inv_payloads) == 1
     mu = inv_payloads[0].holdings[0]
 
-    # current_price back-computed from market_value / shares
-    expected_price = (Decimal("9477.942976") / Decimal("19.108756")).quantize(Decimal("0.0001"))
-    assert mu.current_price == expected_price
-
-    # market_value quantized to 2 decimals
+    # market_value quantized to 2 decimals first
     assert mu.market_value == Decimal("9477.94")
+
+    # current_price back-computed from (already-quantized) market_value / shares
+    expected_price = (Decimal("9477.94") / Decimal("19.108756")).quantize(Decimal("0.0001"))
+    assert mu.current_price == expected_price
 
     # cost_basis derived from purchase_price * shares (since cost_basis=0 is treated as unknown)
     expected_cb = (Decimal("131.466") * Decimal("19.108756")).quantize(Decimal("0.01"))
