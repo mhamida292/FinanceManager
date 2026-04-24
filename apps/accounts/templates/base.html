@@ -13,7 +13,7 @@
     <div class="flex gap-6 items-center">
       <a href="/" class="font-bold text-emerald-400">finance.momajlab</a>
       <a href="/" class="text-slate-300 hover:text-white">Dashboard</a>
-      <a href="/banks/" class="text-slate-500">Banks</a>
+      <a href="{% url 'banking:list' %}" class="text-slate-300 hover:text-white">Banks</a>
       <a href="/investments/" class="text-slate-500">Investments</a>
       <a href="/assets/" class="text-slate-500">Assets</a>
       <a href="{% url 'settings' %}" class="text-slate-300 hover:text-white">Settings</a>
