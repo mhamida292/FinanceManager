@@ -35,7 +35,7 @@ class _FakeSimpleFIN:
 
 
 class _FakePriceProvider:
-    name = "yahoo"
+    name = "stooq"
     quotes_by_symbol: dict[str, Decimal] = {}
 
     def fetch_quotes(self, symbols):
@@ -72,7 +72,7 @@ def fake_simplefin_single_holding():
 def fake_yahoo():
     original = price_registry._REGISTRY.copy()
     _FakePriceProvider.quotes_by_symbol = {}
-    price_registry._REGISTRY["yahoo"] = _FakePriceProvider
+    price_registry._REGISTRY["stooq"] = _FakePriceProvider
     yield _FakePriceProvider
     price_registry._REGISTRY.clear()
     price_registry._REGISTRY.update(original)

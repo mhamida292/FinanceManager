@@ -129,7 +129,7 @@ def update_cost_basis(*, holding: Holding, cost_basis: Decimal | None) -> Holdin
 
 
 def refresh_manual_prices(*, user) -> int:
-    """Fetch Yahoo Finance prices for every manual holding symbol this user owns.
+    """Fetch live prices (default: Stooq) for every manual holding symbol this user owns.
     Returns the number of holdings whose price was updated.
     """
     manual_holdings = list(
@@ -141,7 +141,7 @@ def refresh_manual_prices(*, user) -> int:
     if not symbols:
         return 0
 
-    quotes = {q.symbol: q for q in get_price_provider("yahoo").fetch_quotes(symbols)}
+    quotes = {q.symbol: q for q in get_price_provider().fetch_quotes(symbols)}
     now = timezone.now()
     updated = 0
     touched_accounts: set[int] = set()
