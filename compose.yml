@@ -21,10 +21,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    expose:
-      - "8000"
+    ports:
+      - "${WEB_PORT:-8000}:8000"
 
+  # Production-only: TLS termination via Caddy + Cloudflare DNS-01.
+  # Started only when you run `docker compose --profile prod up -d`.
+  # Requires CLOUDFLARE_API_TOKEN in .env and DNS pointing finance.momajlab.com
+  # at this host's tailnet IP.
   proxy:
+    profiles: ["prod"]
     build:
       context: .
       dockerfile: Dockerfile.caddy
