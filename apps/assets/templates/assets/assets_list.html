@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Assets{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold">Assets</h1>
+    <div class="text-slate-500 text-sm">Total: <span class="font-mono text-emerald-200">${{ total|floatformat:2 }}</span></div>
+  </div>
+  <div class="flex gap-2">
+    <form method="post" action="{% url 'assets:refresh' %}" class="m-0">
+      {% csrf_token %}
+      <button type="submit" class="text-slate-400 hover:text-white text-sm border border-slate-700 px-3 py-2 rounded">⟳ Refresh prices</button>
+    </form>
+    <a href="{% url 'assets:add' %}" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded">+ Add</a>
+  </div>
+</div>
+
+{% if messages %}
+  {% for message in messages %}
+  <div class="bg-{% if message.tags == 'error' %}red-900/40 border-red-700 text-red-200{% elif message.tags == 'warning' %}amber-900/40 border-amber-700 text-amber-200{% else %}emerald-900/40 border-emerald-700 text-emerald-200{% endif %} border p-3 rounded text-sm mb-4">
+    {{ message }}
+  </div>
+  {% endfor %}
+{% endif %}
+
+{% if not assets %}
+  <div class="bg-slate-900 border border-slate-800 rounded p-6 text-slate-400">
+    No assets tracked yet. Click <strong class="text-slate-200">+ Add</strong> to track gold, art, cars, cash, or anything else.
+  </div>
+{% else %}
+  <div class="bg-slate-900 border border-slate-800 rounded overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="border-b border-slate-800 text-slate-500 text-xs uppercase tracking-wider">
+        <tr>
+          <th class="px-5 py-2 w-10"></th>
+          <th class="px-5 py-2 text-left">Name</th>
+          <th class="px-5 py-2 text-right">Qty</th>
+          <th class="px-5 py-2 text-right">Value</th>
+          <th class="px-5 py-2 text-right">Updated</th>
+          <th class="px-5 py-2"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-800">
+        {% for a in assets %}
+        <tr>
+          <td class="px-5 py-3 text-center">{% if a.kind == 'scraped' %}📈{% else %}✎{% endif %}</td>
+          <td class="px-5 py-3">
+            <div class="font-medium">{{ a.name }}</div>
+            {% if a.notes %}<div class="text-xs text-slate-500">{{ a.notes }}</div>{% endif %}
+          </td>
+          <td class="px-5 py-3 text-right font-mono text-slate-400">
+            {% if a.kind == 'scraped' %}{{ a.quantity }} {{ a.unit }}{% else %}—{% endif %}
+          </td>
+          <td class="px-5 py-3 text-right font-mono text-emerald-200">${{ a.current_value|floatformat:2 }}</td>
+          <td class="px-5 py-3 text-right text-xs text-slate-500">
+            {% if a.last_priced_at %}{{ a.last_priced_at|date:"M j" }}{% else %}never{% endif %}
+          </td>
+          <td class="px-5 py-3 text-right whitespace-nowrap">
+            <a href="{% url 'assets:edit' a.id %}" class="text-slate-500 hover:text-white text-sm">✎</a>
+            <a href="{% url 'assets:delete' a.id %}" class="text-slate-600 hover:text-red-400 text-sm ml-2">🗑</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %}
