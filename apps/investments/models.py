@@ -28,6 +28,10 @@ class InvestmentAccount(models.Model):
     display_name = models.CharField(max_length=200, blank=True, default="", help_text="UI override; never overwritten by sync.")
     external_id = models.CharField(max_length=200, blank=True, default="", help_text="Provider's account ID (SimpleFIN only).")
     currency = models.CharField(max_length=8, default="USD")
+    cash_balance = models.DecimalField(
+        max_digits=18, decimal_places=2, default=Decimal("0"),
+        help_text="Uninvested cash sitting in this account. Maintained manually.",
+    )
     notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     last_synced_at = models.DateTimeField(null=True, blank=True)
