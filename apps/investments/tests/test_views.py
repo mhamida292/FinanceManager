@@ -144,3 +144,25 @@ def test_delete_holding_forbidden_for_other_user(alice, bob, bob_client):
     r = bob_client.post(reverse("investments:delete_holding", args=[h.id]))
     assert r.status_code == 404
     assert Holding.objects.filter(pk=h.id).exists()
+
+
+def test_edit_investment_account_persists(alice, alice_client):
+    acc = InvestmentAccount.objects.create(user=alice, source="manual", broker="Old", name="Old name")
+    r = alice_client.post(reverse("investments:edit_account", args=[acc.id]), {
+        "name": "New name", "broker": "Fidelity", "notes": "401k",
+        "cash_balance": "1234.56",
+    })
+    assert r.status_code == 302
+    acc.refresh_from_db()
+    assert acc.name == "New name"
+    assert acc.broker == "Fidelity"
+    assert acc.notes == "401k"
+    assert acc.cash_balance == Decimal("1234.56")
+
+
+def test_edit_investment_account_forbidden_for_other_user(alice, bob, bob_client):
+    acc = InvestmentAccount.objects.create(user=alice, source="manual", broker="F", name="X")
+    r = bob_client.post(reverse("investments:edit_account", args=[acc.id]), {
+        "name": "pwned", "broker": "X", "cash_balance": "0",
+    })
+    assert r.status_code == 404
