@@ -10,3 +10,4 @@ class ProvidersConfig(AppConfig):
         # Import provider modules so their @register decorators run and populate the registry.
         from . import simplefin  # noqa: F401
         from .prices import yahoo  # noqa: F401
+        from .scrapers import css  # noqa: F401
