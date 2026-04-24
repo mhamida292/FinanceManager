@@ -11,4 +11,6 @@ urlpatterns = [
     path("<int:institution_id>/rename/", views.rename_institution, name="rename_institution"),
     path("accounts/<int:account_id>/", views.account_detail, name="account_detail"),
     path("accounts/<int:account_id>/rename/", views.rename_account, name="rename_account"),
+    path("<int:institution_id>/delete/", views.delete_institution, name="delete_institution"),
+    path("accounts/<int:account_id>/delete/", views.delete_account, name="delete_account"),
 ]

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ institution.effective_name }}{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto mt-10">
+  <h1 class="text-2xl font-bold mb-4">Delete "{{ institution.effective_name }}"?</h1>
+  <p class="text-slate-400 text-sm mb-2">This permanently removes:</p>
+  <ul class="text-slate-400 text-sm mb-6 list-disc list-inside">
+    <li>The institution row + its encrypted SimpleFIN access URL</li>
+    <li>All bank accounts under it ({{ institution.accounts.count }})</li>
+    <li>All transactions in those accounts</li>
+    <li>All investment accounts linked through this institution</li>
+  </ul>
+  <form method="post" class="flex items-center gap-3">
+    {% csrf_token %}
+    <button type="submit" class="bg-red-600 hover:bg-red-500 text-white font-bold px-5 py-2 rounded">Delete</button>
+    <a href="{% url 'banking:list' %}" class="text-slate-400 hover:text-white text-sm">Cancel</a>
+  </form>
+</div>
+{% endblock %}

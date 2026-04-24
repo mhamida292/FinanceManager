@@ -103,3 +103,27 @@ def rename_account(request, account_id):
         "current_value": account.display_name,
         "fallback_value": account.name,
     })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def delete_institution(request, institution_id):
+    institution = get_object_or_404(Institution.objects.for_user(request.user), pk=institution_id)
+    if request.method == "POST":
+        name = institution.effective_name
+        institution.delete()
+        messages.success(request, f"Deleted {name} and all related accounts/transactions.")
+        return HttpResponseRedirect(reverse("banking:list"))
+    return render(request, "banking/institution_confirm_delete.html", {"institution": institution})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def delete_account(request, account_id):
+    account = get_object_or_404(Account.objects.for_user(request.user), pk=account_id)
+    if request.method == "POST":
+        name = account.effective_name
+        account.delete()
+        messages.success(request, f"Deleted {name} and its transactions.")
+        return HttpResponseRedirect(reverse("banking:list"))
+    return render(request, "banking/account_confirm_delete.html", {"account": account})
