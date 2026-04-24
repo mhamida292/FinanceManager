@@ -2,8 +2,87 @@
 {% block title %}Settings{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-bold mb-6">Settings</h1>
-<div class="bg-slate-900 border border-slate-800 rounded p-6">
-  <p class="text-slate-400">Signed in as <strong class="text-slate-100">{{ user.username }}</strong>.</p>
-  <p class="text-slate-500 text-sm mt-2">Phase 1 placeholder. Sync history, bank re-link, and password change land in later phases.</p>
+
+{% if messages %}
+  {% for message in messages %}
+  <div class="bg-{% if message.tags == 'error' %}red-900/40 border-red-700 text-red-200{% else %}emerald-900/40 border-emerald-700 text-emerald-200{% endif %} border p-3 rounded text-sm mb-4">
+    {{ message }}
+  </div>
+  {% endfor %}
+{% endif %}
+
+<div class="bg-slate-900 border border-slate-800 rounded p-5 mb-6">
+  <p class="text-slate-400 text-sm">Signed in as <strong class="text-slate-100">{{ user.username }}</strong>.</p>
 </div>
+
+<h2 class="text-lg font-semibold mb-3">Bank institutions</h2>
+{% if not institutions %}
+  <p class="text-slate-500 text-sm mb-6">None linked. Add one at <a href="{% url 'banking:list' %}" class="text-emerald-400 underline">/banks/</a>.</p>
+{% else %}
+  <div class="bg-slate-900 border border-slate-800 rounded divide-y divide-slate-800 mb-6">
+    {% for inst in institutions %}
+    <div class="flex items-center justify-between px-5 py-3">
+      <div>
+        <div class="font-medium">{{ inst.effective_name }}</div>
+        <div class="text-xs text-slate-500">
+          Last synced: {% if inst.last_synced_at %}{{ inst.last_synced_at|date:"M j, Y g:i a" }}{% else %}never{% endif %}
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <form method="post" action="{% url 'banking:sync' inst.id %}" class="m-0">
+          {% csrf_token %}
+          <button type="submit" class="text-slate-400 hover:text-white text-sm">⟳ Bank sync</button>
+        </form>
+        <a href="{% url 'banking:rename_institution' inst.id %}" class="text-slate-500 hover:text-white text-sm">✎</a>
+        <a href="{% url 'banking:delete_institution' inst.id %}" class="text-slate-600 hover:text-red-400 text-sm">🗑</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<h2 class="text-lg font-semibold mb-3">SimpleFIN-linked investment accounts</h2>
+{% if not investment_accounts %}
+  <p class="text-slate-500 text-sm mb-6">None.</p>
+{% else %}
+  <div class="bg-slate-900 border border-slate-800 rounded divide-y divide-slate-800 mb-6">
+    {% for acc in investment_accounts %}
+    <div class="flex items-center justify-between px-5 py-3">
+      <div>
+        <div class="font-medium">{{ acc.effective_name }}</div>
+        <div class="text-xs text-slate-500">
+          {{ acc.broker }} · Last synced: {% if acc.last_synced_at %}{{ acc.last_synced_at|date:"M j, Y g:i a" }}{% else %}never{% endif %}
+        </div>
+      </div>
+      <a href="{% url 'investments:delete_account' acc.id %}" class="text-slate-600 hover:text-red-400 text-sm">🗑</a>
+    </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<h2 class="text-lg font-semibold mb-3">Scraped assets</h2>
+{% if not scraped_assets %}
+  <p class="text-slate-500 text-sm mb-6">None.</p>
+{% else %}
+  <div class="bg-slate-900 border border-slate-800 rounded divide-y divide-slate-800 mb-6">
+    {% for a in scraped_assets %}
+    <div class="flex items-center justify-between px-5 py-3">
+      <div>
+        <div class="font-medium">{{ a.name }}</div>
+        <div class="text-xs text-slate-500">
+          Last scraped: {% if a.last_priced_at %}{{ a.last_priced_at|date:"M j, Y g:i a" }}{% else %}never{% endif %}
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="{% url 'assets:edit' a.id %}" class="text-slate-500 hover:text-white text-sm">✎</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<form method="post" action="{% url 'assets:refresh' %}" class="m-0 mb-6">
+  {% csrf_token %}
+  <button type="submit" class="text-slate-400 hover:text-white text-sm border border-slate-700 px-3 py-2 rounded">⟳ Refresh all scraped assets</button>
+</form>
 {% endblock %}
