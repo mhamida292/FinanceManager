@@ -39,6 +39,7 @@
             {% csrf_token %}
             <button type="submit" class="text-slate-400 hover:text-white text-sm">⟳ Sync</button>
           </form>
+          <a href="{% url 'banking:delete_institution' inst.id %}" class="text-slate-600 hover:text-red-400 text-sm" title="Delete">🗑</a>
         </div>
       </div>
       <div class="divide-y divide-slate-800">
@@ -54,6 +55,7 @@
             </div>
           </a>
           <a href="{% url 'banking:rename_account' account.id %}" class="text-slate-600 hover:text-white text-sm" title="Rename">✎</a>
+          <a href="{% url 'banking:delete_account' account.id %}" class="text-slate-600 hover:text-red-400 text-sm" title="Delete">🗑</a>
         </div>
         {% empty %}
         <div class="px-5 py-3 text-slate-500 text-sm">No accounts returned yet — try syncing.</div>
