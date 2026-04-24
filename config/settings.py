@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "apps.banking",
     "apps.investments",
     "apps.assets",
+    "apps.liabilities",
     "apps.dashboard",
     "apps.providers",
 ]
