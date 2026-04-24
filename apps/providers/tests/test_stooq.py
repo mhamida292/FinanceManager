@@ -40,17 +40,27 @@ def test_stooq_parses_single_symbol():
     assert quotes[0].price == Decimal("93.3300")
 
 
+_AAPL_RESPONSE = """Symbol,Date,Time,Open,High,Low,Close,Volume,Name
+AAPL.US,2026-04-24,22:00:19,180.00,182.50,179.50,182.47,12345678,APPLE INC
+"""
+
+_MSFT_RESPONSE = """Symbol,Date,Time,Open,High,Low,Close,Volume,Name
+MSFT.US,2026-04-24,22:00:19,408.00,411.00,407.50,410.10,4567890,MICROSOFT CORP
+"""
+
+
 @responses.activate
-def test_stooq_parses_batch():
-    responses.add(
-        responses.GET,
-        _matches_url("https://stooq.com/q/l/?s=aapl.us,msft.us"),
-        body=_BATCH_RESPONSE,
-        status=200,
-    )
+def test_stooq_does_one_request_per_symbol():
+    """Stooq's batch syntax doesn't reliably work — provider must fetch one symbol at a time."""
+    responses.add(responses.GET, "https://stooq.com/q/l/?s=aapl.us&i=d&f=sd2t2ohlcvn&h",
+                  body=_AAPL_RESPONSE, status=200)
+    responses.add(responses.GET, "https://stooq.com/q/l/?s=msft.us&i=d&f=sd2t2ohlcvn&h",
+                  body=_MSFT_RESPONSE, status=200)
+
     quotes = StooqPriceProvider().fetch_quotes(["aapl", "msft"])
     by_symbol = {q.symbol: q.price for q in quotes}
     assert by_symbol == {"AAPL": Decimal("182.4700"), "MSFT": Decimal("410.1000")}
+    assert len(responses.calls) == 2  # one HTTP call per symbol
 
 
 @responses.activate

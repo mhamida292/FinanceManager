@@ -33,36 +33,39 @@ class StooqPriceProvider:
         self._timeout = timeout
 
     def fetch_quotes(self, symbols: Iterable[str]) -> list[PriceQuote]:
+        # Stooq's /q/l endpoint doesn't reliably batch comma-separated symbols
+        # (the response collapses them into one malformed row). Do one request
+        # per symbol — Stooq is fast and lightweight, the cost is negligible.
         normalized = [s.strip().upper() for s in symbols if s and s.strip()]
         if not normalized:
             return []
 
-        url = (
-            "https://stooq.com/q/l/?s="
-            + ",".join(f"{s.lower()}.us" for s in normalized)
-            + "&i=d&f=sd2t2ohlcvn&h"
-        )
+        now = datetime.now(tz=timezone.utc)
+        quotes: list[PriceQuote] = []
+
+        for symbol in normalized:
+            try:
+                quote = self._fetch_one(symbol, now)
+            except Exception:
+                continue
+            if quote is not None:
+                quotes.append(quote)
+
+        return quotes
+
+    def _fetch_one(self, symbol: str, at: datetime) -> PriceQuote | None:
+        url = f"https://stooq.com/q/l/?s={symbol.lower()}.us&i=d&f=sd2t2ohlcvn&h"
         response = self._http.get(url, timeout=self._timeout)
         response.raise_for_status()
 
-        now = datetime.now(tz=timezone.utc)
-        quotes: list[PriceQuote] = []
         reader = csv.DictReader(StringIO(response.text))
         for row in reader:
             close = (row.get("Close") or "").strip()
             if not close or close == "N/D":
-                continue
+                return None
             try:
                 price = Decimal(close).quantize(Decimal("0.0001"))
             except (InvalidOperation, ValueError):
-                continue
-
-            raw_symbol = (row.get("Symbol") or "").upper()
-            # Strip the .US suffix to return the symbol the caller asked for.
-            symbol = raw_symbol[:-3] if raw_symbol.endswith(".US") else raw_symbol
-            if not symbol:
-                continue
-
-            quotes.append(PriceQuote(symbol=symbol, price=price, at=now))
-
-        return quotes
+                return None
+            return PriceQuote(symbol=symbol, price=price, at=at)
+        return None
