@@ -96,3 +96,11 @@ SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days
 # Without this, Django thinks every request is plain HTTP. Caddy 2 forwards
 # this header by default in a reverse_proxy block — no Caddyfile change needed.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# --- Banking / Providers ---
+# 32-byte urlsafe-base64 Fernet key. Generate with:
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# This encrypts SimpleFIN access URLs (bank read credentials) at rest.
+# ROTATION: changing this key makes every stored access URL unreadable.
+# Back it up separately from POSTGRES backups — keys should not live where ciphertext lives.
+FIELD_ENCRYPTION_KEY = os.environ["FIELD_ENCRYPTION_KEY"]
