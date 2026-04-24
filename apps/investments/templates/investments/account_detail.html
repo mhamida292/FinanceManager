@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}{{ account.effective_name }}{% endblock %}
+{% block content %}
+<a href="{% url 'investments:list' %}" class="text-slate-500 hover:text-white text-sm">← Investments</a>
+
+{% if messages %}
+  {% for message in messages %}
+  <div class="bg-{% if message.tags == 'error' %}red-900/40 border-red-700 text-red-200{% else %}emerald-900/40 border-emerald-700 text-emerald-200{% endif %} border p-3 rounded text-sm mt-3">
+    {{ message }}
+  </div>
+  {% endfor %}
+{% endif %}
+
+<div class="flex items-end justify-between mt-2 mb-6">
+  <div>
+    <h1 class="text-2xl font-bold">{{ account.effective_name }}</h1>
+    <div class="text-slate-500 text-sm">{{ account.broker|default:"" }} · {{ account.get_source_display }}</div>
+  </div>
+  <div class="text-right space-y-1">
+    <div class="text-xs text-slate-500 uppercase tracking-wider">Market value</div>
+    <div class="text-2xl font-mono text-emerald-200">${{ total_value|floatformat:2 }}</div>
+    {% if total_gain is not None %}
+      <div class="text-xs font-mono {% if total_gain < 0 %}text-red-300{% else %}text-emerald-400{% endif %}">
+        gain/loss: {% if total_gain >= 0 %}+{% endif %}${{ total_gain|floatformat:2 }}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if account.source == 'manual' %}
+<div class="mb-4">
+  <a href="{% url 'investments:add_holding' account.id %}" class="text-emerald-400 hover:text-emerald-300 text-sm">+ Add holding</a>
+</div>
+{% endif %}
+
+{% if not holdings %}
+  <div class="bg-slate-900 border border-slate-800 rounded p-6 text-slate-400 text-sm">
+    No holdings yet.
+  </div>
+{% else %}
+  <div class="bg-slate-900 border border-slate-800 rounded overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="border-b border-slate-800 text-slate-500 text-xs uppercase tracking-wider">
+        <tr>
+          <th class="px-5 py-2 text-left">Symbol</th>
+          <th class="px-5 py-2 text-right">Shares</th>
+          <th class="px-5 py-2 text-right">Price</th>
+          <th class="px-5 py-2 text-right">Value</th>
+          <th class="px-5 py-2 text-right">Cost basis</th>
+          <th class="px-5 py-2 text-right">Gain / loss</th>
+          <th class="px-5 py-2"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-800">
+        {% for h in holdings %}
+        <tr>
+          <td class="px-5 py-3 font-mono font-semibold">{{ h.symbol }}</td>
+          <td class="px-5 py-3 text-right font-mono">{{ h.shares }}</td>
+          <td class="px-5 py-3 text-right font-mono">${{ h.current_price|floatformat:2 }}</td>
+          <td class="px-5 py-3 text-right font-mono">${{ h.market_value|floatformat:2 }}</td>
+          <td class="px-5 py-3 text-right font-mono">
+            {% if h.cost_basis is not None %}
+              ${{ h.cost_basis|floatformat:2 }}
+              {% if h.cost_basis_source == 'manual' %}<span class="text-amber-400 text-xs" title="Locked from sync overwrite">✋</span>{% endif %}
+            {% else %}
+              <span class="text-slate-600">—</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-3 text-right font-mono {% if h.gain_loss and h.gain_loss < 0 %}text-red-300{% elif h.gain_loss %}text-emerald-400{% endif %}">
+            {% if h.gain_loss is not None %}
+              {% if h.gain_loss >= 0 %}+{% endif %}${{ h.gain_loss|floatformat:2 }}
+              <div class="text-xs text-slate-500">{% if h.gain_loss_percent >= 0 %}+{% endif %}{{ h.gain_loss_percent|floatformat:2 }}%</div>
+            {% else %}<span class="text-slate-600">—</span>{% endif %}
+          </td>
+          <td class="px-5 py-3 text-right">
+            <a href="{% url 'investments:edit_holding' h.id %}" class="text-slate-500 hover:text-white text-sm">✎</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %}

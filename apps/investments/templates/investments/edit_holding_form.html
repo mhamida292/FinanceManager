@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ holding.symbol }}{% endblock %}
+{% block content %}
+<div class="max-w-xl mx-auto">
+  <a href="{% url 'investments:account_detail' holding.investment_account.id %}" class="text-slate-500 hover:text-white text-sm">← {{ holding.investment_account.effective_name }}</a>
+  <h1 class="text-2xl font-bold mt-2 mb-4">Edit {{ holding.symbol }}</h1>
+
+  {% if messages %}
+    {% for message in messages %}
+    <div class="bg-red-900/40 border-red-700 text-red-200 border p-3 rounded text-sm mb-4">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" class="space-y-4">
+    {% csrf_token %}
+    {% if holding.investment_account.source == 'manual' %}
+    <div>
+      <label class="block text-sm text-slate-400 mb-1">Shares</label>
+      <input name="shares" type="text" value="{{ holding.shares }}"
+             class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 font-mono">
+    </div>
+    {% else %}
+    <div class="text-xs text-slate-500">Shares are provider-managed for SimpleFIN holdings — edit cost basis only.</div>
+    {% endif %}
+    <div>
+      <label class="block text-sm text-slate-400 mb-1">Cost basis (total)</label>
+      <input name="cost_basis" type="text" value="{{ holding.cost_basis|default:'' }}"
+             placeholder="1500.00"
+             class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 font-mono">
+      <p class="text-xs text-slate-500 mt-1">
+        Total you paid for this position. {% if holding.cost_basis_source == 'manual' %}✋ Currently locked — sync won't overwrite.{% endif %}
+        Leave blank to clear and let the provider re-populate on next sync.
+      </p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2 rounded">Save</button>
+      <a href="{% url 'investments:account_detail' holding.investment_account.id %}" class="text-slate-400 hover:text-white text-sm">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
