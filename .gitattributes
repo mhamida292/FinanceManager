@@ -1,0 +1,5 @@
+# Force LF for files that must run inside Linux containers.
+*.sh    text eol=lf
+Dockerfile* text eol=lf
+Caddyfile text eol=lf
+entrypoint.sh text eol=lf
