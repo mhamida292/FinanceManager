@@ -1,0 +1,14 @@
+{
+    # global options
+    email mohamed@momajlab.com
+}
+
+finance.momajlab.com {
+    encode zstd gzip
+
+    tls {
+        dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+    }
+
+    reverse_proxy web:8000
+}
