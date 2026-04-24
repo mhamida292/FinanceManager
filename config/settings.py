@@ -91,3 +91,8 @@ CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days
+
+# Caddy terminates TLS and forwards the real protocol via X-Forwarded-Proto.
+# Without this, Django thinks every request is plain HTTP. Caddy 2 forwards
+# this header by default in a reverse_proxy block — no Caddyfile change needed.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

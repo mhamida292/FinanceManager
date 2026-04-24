@@ -23,7 +23,25 @@ services:
         condition: service_healthy
     expose:
       - "8000"
-    # No ports: published — proxy will reach this over the internal network.
+
+  proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "443:443"
+      - "443:443/udp"
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
 
 volumes:
   finance_pgdata:
+  caddy_data:
+  caddy_config:
