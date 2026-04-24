@@ -20,6 +20,10 @@ class Institution(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="institutions")
     name = models.CharField(max_length=200, help_text="User-friendly label for this connection.")
+    display_name = models.CharField(
+        max_length=200, blank=True, default="",
+        help_text="Optional override shown in the UI. Blank = use name. Never overwritten by sync.",
+    )
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default="simplefin")
     access_url = EncryptedTextField(help_text="Provider access URL. Encrypted at rest.")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -30,8 +34,12 @@ class Institution(models.Model):
     class Meta:
         ordering = ["-created_at"]
 
+    @property
+    def effective_name(self) -> str:
+        return self.display_name or self.name
+
     def __str__(self):
-        return f"{self.name} ({self.get_provider_display()})"
+        return f"{self.effective_name} ({self.get_provider_display()})"
 
 
 class AccountQuerySet(UserScopedQuerySet):
@@ -52,6 +60,10 @@ class Account(models.Model):
 
     institution = models.ForeignKey(Institution, on_delete=models.CASCADE, related_name="accounts")
     name = models.CharField(max_length=200)
+    display_name = models.CharField(
+        max_length=200, blank=True, default="",
+        help_text="Optional override shown in the UI. Blank = use name. Never overwritten by sync.",
+    )
     type = models.CharField(max_length=20, choices=TYPE_CHOICES, default="other")
     balance = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     currency = models.CharField(max_length=8, default="USD")
@@ -67,8 +79,12 @@ class Account(models.Model):
             models.UniqueConstraint(fields=["institution", "external_id"], name="uniq_account_per_institution"),
         ]
 
+    @property
+    def effective_name(self) -> str:
+        return self.display_name or self.name
+
     def __str__(self):
-        return f"{self.org_name or self.institution.name} · {self.name}"
+        return f"{self.org_name or self.institution.effective_name} · {self.effective_name}"
 
 
 class TransactionQuerySet(UserScopedQuerySet):

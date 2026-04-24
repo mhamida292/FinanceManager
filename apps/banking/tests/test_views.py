@@ -70,3 +70,70 @@ def test_anonymous_banks_list_redirects_to_login():
     response = c.get(reverse("banking:list"))
     assert response.status_code == 302
     assert "/login/" in response["Location"]
+
+
+def test_rename_account_persists_display_name(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
+    account = Account.objects.create(
+        institution=inst, name="Alice Checking", type="checking",
+        balance=Decimal("100.00"), external_id="A-1",
+    )
+    response = alice_client.post(
+        reverse("banking:rename_account", args=[account.id]),
+        {"display_name": "Joint Checking"},
+    )
+    assert response.status_code == 302
+    account.refresh_from_db()
+    assert account.display_name == "Joint Checking"
+    assert account.effective_name == "Joint Checking"
+
+
+def test_rename_account_blank_restores_provider_name(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
+    account = Account.objects.create(
+        institution=inst, name="Alice Checking", type="checking",
+        balance=Decimal("100.00"), external_id="A-1",
+        display_name="Old Custom Name",
+    )
+    alice_client.post(
+        reverse("banking:rename_account", args=[account.id]),
+        {"display_name": ""},
+    )
+    account.refresh_from_db()
+    assert account.display_name == ""
+    assert account.effective_name == "Alice Checking"
+
+
+def test_rename_account_forbidden_for_other_user(alice, bob, bob_client):
+    inst = Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
+    account = Account.objects.create(
+        institution=inst, name="Alice Checking", type="checking",
+        balance=Decimal("100.00"), external_id="A-1",
+    )
+    response = bob_client.post(
+        reverse("banking:rename_account", args=[account.id]),
+        {"display_name": "Pwned"},
+    )
+    assert response.status_code == 404
+    account.refresh_from_db()
+    assert account.display_name == ""
+
+
+def test_rename_institution_persists_and_isolates(alice, bob, alice_client, bob_client):
+    inst = Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
+
+    response = alice_client.post(
+        reverse("banking:rename_institution", args=[inst.id]),
+        {"display_name": "Family Banks"},
+    )
+    assert response.status_code == 302
+    inst.refresh_from_db()
+    assert inst.display_name == "Family Banks"
+
+    response = bob_client.post(
+        reverse("banking:rename_institution", args=[inst.id]),
+        {"display_name": "Pwned"},
+    )
+    assert response.status_code == 404
+    inst.refresh_from_db()
+    assert inst.display_name == "Family Banks"

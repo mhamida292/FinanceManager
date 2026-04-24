@@ -67,3 +67,39 @@ def account_detail(request, account_id):
         "account": account,
         "transactions": transactions,
     })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def rename_institution(request, institution_id):
+    institution = get_object_or_404(Institution.objects.for_user(request.user), pk=institution_id)
+    if request.method == "POST":
+        institution.display_name = request.POST.get("display_name", "").strip()
+        institution.save(update_fields=["display_name"])
+        messages.success(request, f"Renamed to \"{institution.effective_name}\".")
+        return HttpResponseRedirect(reverse("banking:list"))
+    return render(request, "banking/rename_form.html", {
+        "subject": "institution",
+        "object": institution,
+        "cancel_url": reverse("banking:list"),
+        "current_value": institution.display_name,
+        "fallback_value": institution.name,
+    })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def rename_account(request, account_id):
+    account = get_object_or_404(Account.objects.for_user(request.user), pk=account_id)
+    if request.method == "POST":
+        account.display_name = request.POST.get("display_name", "").strip()
+        account.save(update_fields=["display_name"])
+        messages.success(request, f"Renamed to \"{account.effective_name}\".")
+        return HttpResponseRedirect(reverse("banking:account_detail", args=[account.id]))
+    return render(request, "banking/rename_form.html", {
+        "subject": "account",
+        "object": account,
+        "cancel_url": reverse("banking:account_detail", args=[account.id]),
+        "current_value": account.display_name,
+        "fallback_value": account.name,
+    })

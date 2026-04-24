@@ -27,29 +27,34 @@
     <div class="bg-slate-900 border border-slate-800 rounded">
       <div class="flex items-center justify-between px-5 py-3 border-b border-slate-800">
         <div>
-          <div class="font-semibold">{{ inst.name }}</div>
+          <div class="font-semibold">{{ inst.effective_name }}</div>
           <div class="text-xs text-slate-500">
             {{ inst.get_provider_display }} ·
             Last synced: {% if inst.last_synced_at %}{{ inst.last_synced_at|date:"M j, Y g:i a" }}{% else %}never{% endif %}
           </div>
         </div>
-        <form method="post" action="{% url 'banking:sync' inst.id %}" class="m-0">
-          {% csrf_token %}
-          <button type="submit" class="text-slate-400 hover:text-white text-sm">⟳ Sync</button>
-        </form>
+        <div class="flex items-center gap-3">
+          <a href="{% url 'banking:rename_institution' inst.id %}" class="text-slate-500 hover:text-white text-sm" title="Rename">✎</a>
+          <form method="post" action="{% url 'banking:sync' inst.id %}" class="m-0">
+            {% csrf_token %}
+            <button type="submit" class="text-slate-400 hover:text-white text-sm">⟳ Sync</button>
+          </form>
+        </div>
       </div>
       <div class="divide-y divide-slate-800">
         {% for account in inst.accounts.all %}
-        <a href="{% url 'banking:account_detail' account.id %}"
-           class="flex items-center justify-between px-5 py-3 hover:bg-slate-800/40">
-          <div>
-            <div class="font-medium">{{ account.name }}</div>
-            <div class="text-xs text-slate-500">{{ account.org_name|default:"" }} · {{ account.get_type_display }}</div>
-          </div>
-          <div class="font-mono {% if account.balance < 0 %}text-red-300{% else %}text-slate-100{% endif %}">
-            {{ account.balance }} {{ account.currency }}
-          </div>
-        </a>
+        <div class="flex items-center justify-between px-5 py-3 hover:bg-slate-800/40">
+          <a href="{% url 'banking:account_detail' account.id %}" class="flex-1 flex items-center justify-between min-w-0 pr-3">
+            <div class="min-w-0">
+              <div class="font-medium truncate">{{ account.effective_name }}</div>
+              <div class="text-xs text-slate-500">{{ account.org_name|default:"" }} · {{ account.get_type_display }}</div>
+            </div>
+            <div class="font-mono {% if account.balance < 0 %}text-red-300{% else %}text-slate-100{% endif %}">
+              {{ account.balance }} {{ account.currency }}
+            </div>
+          </a>
+          <a href="{% url 'banking:rename_account' account.id %}" class="text-slate-600 hover:text-white text-sm" title="Rename">✎</a>
+        </div>
         {% empty %}
         <div class="px-5 py-3 text-slate-500 text-sm">No accounts returned yet — try syncing.</div>
         {% endfor %}

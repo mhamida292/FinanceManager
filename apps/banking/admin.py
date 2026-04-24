@@ -5,17 +5,17 @@ from .models import Account, Institution, Transaction
 
 @admin.register(Institution)
 class InstitutionAdmin(admin.ModelAdmin):
-    list_display = ("name", "user", "provider", "last_synced_at", "created_at")
+    list_display = ("name", "display_name", "user", "provider", "last_synced_at", "created_at")
     list_filter = ("provider", "user")
-    search_fields = ("name", "user__username")
+    search_fields = ("name", "display_name", "user__username")
     readonly_fields = ("created_at", "last_synced_at")
 
 
 @admin.register(Account)
 class AccountAdmin(admin.ModelAdmin):
-    list_display = ("__str__", "type", "balance", "currency", "last_synced_at")
+    list_display = ("__str__", "display_name", "type", "balance", "currency", "last_synced_at")
     list_filter = ("type", "institution__user")
-    search_fields = ("name", "org_name", "external_id")
+    search_fields = ("name", "display_name", "org_name", "external_id")
     readonly_fields = ("last_synced_at",)
 
 

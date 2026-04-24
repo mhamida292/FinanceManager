@@ -80,3 +80,24 @@ def test_sync_institution_is_idempotent():
     assert result.transactions_updated == 1
     assert Account.objects.filter(institution=inst).count() == 1
     assert Transaction.objects.filter(account__institution=inst).count() == 1
+
+
+@pytest.mark.django_db
+def test_sync_does_not_overwrite_user_rename():
+    """After a user renames an account, subsequent syncs preserve the display_name."""
+    user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")
+    inst = link_institution(
+        user=user, setup_token="base64token",
+        display_name="Main", provider_name="fake",
+    )
+    account = Account.objects.get(institution=inst)
+    account.display_name = "Joint Checking"
+    account.save(update_fields=["display_name"])
+
+    sync_institution(inst)
+
+    account.refresh_from_db()
+    assert account.display_name == "Joint Checking"
+    assert account.effective_name == "Joint Checking"
+    # Provider-sourced name stays current too
+    assert account.name == "Checking"
