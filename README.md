@@ -53,19 +53,37 @@ Then in `.env`, flip `DJANGO_DEBUG=false`, set `DJANGO_ALLOWED_HOSTS=finance.mom
 docker compose exec web pytest -v
 ```
 
-## Daily sync (added in Phase 5)
+## Daily auto-refresh (set up once)
 
-Host crontab:
+Add a crontab entry on the homelab host (not inside the container):
+
+```bash
+crontab -e
 ```
-0 3 * * * cd /opt/finance && docker compose exec -T web python manage.py sync_all
+
+```cron
+# Sync every linked SimpleFIN institution + refresh manual investment prices + scrape asset prices
+0 3 * * * cd /opt/finance && /usr/bin/docker compose exec -T web python manage.py sync_all >> /var/log/finance-sync.log 2>&1
+
+# Backup Postgres every night at 2am, keep 30 days
+0 2 * * * cd /opt/finance && /usr/bin/docker compose exec -T web python manage.py dump_backup >> /var/log/finance-backup.log 2>&1
 ```
 
-## Backups (added in Phase 5)
+(Adjust `/opt/finance` to match your install path.)
 
-Nightly `pg_dump` to `./backups/` — see Phase 5 plan.
+Backups land in `./backups/finance-YYYY-MM-DD-HHMM.sql.gz` (bind-mounted from the host). Files older than 30 days are pruned automatically. Off-site copies are your responsibility — `rsync -a ./backups/ user@nas:/backups/finance/` works fine in another cron entry.
+
+## Restoring from backup
+
+```bash
+gunzip -c backups/finance-2026-04-24-0200.sql.gz | docker compose exec -T db psql -U finance -d finance
+```
 
 ## Plans / specs
 
 - Spec: `docs/superpowers/specs/2026-04-24-personal-finance-dash-design.md`
-- Phase 1: `docs/superpowers/plans/2026-04-24-personal-finance-dash-phase-1-foundation.md`
-- Phase 2: `docs/superpowers/plans/2026-04-24-personal-finance-dash-phase-2-banking.md`
+- Phase 1 (foundation): `docs/superpowers/plans/2026-04-24-personal-finance-dash-phase-1-foundation.md`
+- Phase 2 (banking): `docs/superpowers/plans/2026-04-24-personal-finance-dash-phase-2-banking.md`
+- Phase 3 (investments): `docs/superpowers/plans/2026-04-24-personal-finance-dash-phase-3-investments.md`
+- Phase 4 (assets): `docs/superpowers/plans/2026-04-24-personal-finance-dash-phase-4-assets.md`
+- Phase 5 (dashboard / scheduling): `docs/superpowers/plans/2026-04-24-personal-finance-dash-phase-5-dashboard.md`
