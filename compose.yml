@@ -23,6 +23,8 @@ services:
         condition: service_healthy
     ports:
       - "${WEB_PORT:-8000}:8000"
+    volumes:
+      - ./backups:/backups
 
 volumes:
   finance_pgdata:
