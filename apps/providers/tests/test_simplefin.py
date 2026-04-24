@@ -92,3 +92,62 @@ def test_fetch_raises_when_errors_and_no_accounts():
     )
     with pytest.raises(RuntimeError, match="errors and no accounts"):
         list(SimpleFINProvider().fetch_accounts_with_transactions(access_url))
+
+
+@responses.activate
+def test_fetch_investment_accounts_parses_holdings():
+    access_url = "https://U:T@bridge.simplefin.org/simplefin"
+    responses.add(
+        responses.GET,
+        f"{access_url}/accounts?start-date=0",
+        json={
+            "errors": [],
+            "accounts": [
+                {
+                    "id": "BANK-1", "name": "Checking", "currency": "USD", "balance": "500",
+                    "org": {"name": "Chase"},
+                    "transactions": [],
+                },
+                {
+                    "id": "INV-1", "name": "Roth IRA", "currency": "USD", "balance": "10000",
+                    "org": {"name": "Robinhood"},
+                    "holdings": [
+                        {
+                            "id": "H-1", "symbol": "AAPL", "description": "Apple Inc.",
+                            "shares": "10", "price": "180.00",
+                            "market_value": "1800.00", "cost_basis": "1500.00",
+                        },
+                        {
+                            "id": "H-2", "symbol": "VTI", "description": "Vanguard Total Stock",
+                            "shares": "40", "price": "250.50",
+                            "market_value": "10020.00",
+                        },
+                    ],
+                },
+            ],
+        },
+        status=200,
+    )
+
+    provider = SimpleFINProvider()
+
+    bank_payloads = list(provider.fetch_accounts_with_transactions(access_url))
+    assert len(bank_payloads) == 1
+    assert bank_payloads[0].account.external_id == "BANK-1"
+
+    inv_payloads = list(provider.fetch_investment_accounts(access_url))
+    assert len(inv_payloads) == 1
+    inv = inv_payloads[0]
+    assert inv.external_id == "INV-1"
+    assert inv.broker == "Robinhood"
+    assert len(inv.holdings) == 2
+
+    aapl = inv.holdings[0]
+    assert aapl.symbol == "AAPL"
+    assert aapl.shares == Decimal("10")
+    assert aapl.current_price == Decimal("180.00")
+    assert aapl.market_value == Decimal("1800.00")
+    assert aapl.cost_basis == Decimal("1500.00")
+
+    vti = inv.holdings[1]
+    assert vti.cost_basis is None
