@@ -5,7 +5,10 @@ from typing import Iterable
 
 import requests
 
-from .base import AccountData, AccountSyncPayload, FinancialProvider, TransactionData
+from .base import (
+    AccountData, AccountSyncPayload, FinancialProvider, HoldingData,
+    InvestmentAccountSyncPayload, TransactionData,
+)
 from .registry import register
 
 _SIMPLEFIN_TYPE_HINTS = {
@@ -62,6 +65,8 @@ class SimpleFINProvider:
                 raise RuntimeError(f"SimpleFIN returned errors and no accounts: {errors}")
 
         for raw_account in payload.get("accounts", []):
+            if raw_account.get("holdings"):
+                continue  # investment account — handled by fetch_investment_accounts
             yield self._parse_account(raw_account)
 
     def _parse_account(self, raw: dict) -> AccountSyncPayload:
@@ -87,4 +92,43 @@ class SimpleFINProvider:
             payee=str(raw.get("payee", "")),
             memo=str(raw.get("memo", "")),
             pending=bool(raw.get("pending", False)),
+        )
+
+    def fetch_investment_accounts(self, access_url: str) -> Iterable[InvestmentAccountSyncPayload]:
+        url = f"{access_url.rstrip('/')}/accounts?start-date=0"
+        response = self._http.get(url, timeout=self._timeout)
+        response.raise_for_status()
+        payload = response.json()
+
+        for raw_account in payload.get("accounts", []):
+            holdings = raw_account.get("holdings") or []
+            if not holdings:
+                continue  # bank account, skip
+            yield self._parse_investment_account(raw_account)
+
+    def _parse_investment_account(self, raw: dict) -> InvestmentAccountSyncPayload:
+        org = raw.get("org", {}) or {}
+        holdings = tuple(self._parse_holding(h) for h in raw.get("holdings", []))
+        return InvestmentAccountSyncPayload(
+            external_id=str(raw["id"]),
+            name=str(raw.get("name", "Unnamed Account")),
+            broker=str(org.get("name", "")),
+            currency=str(raw.get("currency", "USD")),
+            holdings=holdings,
+        )
+
+    def _parse_holding(self, raw: dict) -> HoldingData:
+        shares = Decimal(str(raw.get("shares", "0")))
+        price = Decimal(str(raw.get("price", "0")))
+        market_value = Decimal(str(raw.get("market_value", str((shares * price).quantize(Decimal("0.01"))))))
+        cost_basis_raw = raw.get("cost_basis")
+        cost_basis = Decimal(str(cost_basis_raw)) if cost_basis_raw not in (None, "") else None
+        return HoldingData(
+            external_id=str(raw["id"]),
+            symbol=str(raw.get("symbol", "")).upper(),
+            description=str(raw.get("description", "")),
+            shares=shares,
+            current_price=price,
+            market_value=market_value,
+            cost_basis=cost_basis,
         )
