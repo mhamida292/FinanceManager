@@ -1,4 +1,5 @@
-from django.conf import settings
+from urllib.parse import urlencode
+
 from django.shortcuts import redirect
 from django.urls import reverse
 
@@ -27,4 +28,4 @@ class LoginRequiredMiddleware:
         if request.path.startswith("/admin/"):
             # Django admin handles its own login redirect.
             return self.get_response(request)
-        return redirect(f"{reverse('login')}?next={request.path}")
+        return redirect(f"{reverse('login')}?{urlencode({'next': request.get_full_path()})}")
