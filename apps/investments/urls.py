@@ -12,4 +12,5 @@ urlpatterns = [
     path("holdings/<int:holding_id>/edit/", views.edit_holding, name="edit_holding"),
     path("refresh/", views.refresh_prices, name="refresh_prices"),
     path("banks/<int:institution_id>/sync/", views.sync_investments_view, name="sync_from_bank"),
+    path("accounts/<int:account_id>/delete/", views.delete_account, name="delete_account"),
 ]

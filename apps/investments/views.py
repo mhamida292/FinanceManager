@@ -145,3 +145,15 @@ def sync_investments_view(request, institution_id):
             f"{result.holdings_created} new holdings.",
         )
     return HttpResponseRedirect(reverse("investments:list"))
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def delete_account(request, account_id):
+    account = get_object_or_404(InvestmentAccount.objects.for_user(request.user), pk=account_id)
+    if request.method == "POST":
+        name = account.effective_name
+        account.delete()
+        messages.success(request, f"Deleted {name} and its holdings.")
+        return HttpResponseRedirect(reverse("investments:list"))
+    return render(request, "investments/account_confirm_delete.html", {"account": account})
