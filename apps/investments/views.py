@@ -90,7 +90,15 @@ def add_holding(request, account_id):
             messages.error(request, "Symbol and shares are required.")
             return render(request, "investments/add_holding_form.html", {"account": account, **request.POST.dict()})
         upsert_manual_holding(investment_account=account, symbol=symbol, shares=shares, cost_basis=cost_basis)
-        messages.success(request, f"Added {symbol} × {shares}.")
+        # Auto-fetch the price right away so the user doesn't have to remember to click refresh.
+        try:
+            refresh_manual_prices(user=request.user)
+            messages.success(request, f"Added {symbol} × {shares}. Price refresh ran.")
+        except Exception as exc:
+            messages.warning(
+                request,
+                f"Added {symbol} × {shares}, but price refresh failed: {exc}. Click ⟳ Refresh prices to retry.",
+            )
         return HttpResponseRedirect(reverse("investments:account_detail", args=[account.id]))
     return render(request, "investments/add_holding_form.html", {"account": account})
 
