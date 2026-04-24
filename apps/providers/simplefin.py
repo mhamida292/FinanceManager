@@ -119,10 +119,39 @@ class SimpleFINProvider:
 
     def _parse_holding(self, raw: dict) -> HoldingData:
         shares = Decimal(str(raw.get("shares", "0")))
-        price = Decimal(str(raw.get("price", "0")))
-        market_value = Decimal(str(raw.get("market_value", str((shares * price).quantize(Decimal("0.01"))))))
+
+        price_raw = raw.get("price")
+        price = Decimal(str(price_raw)) if price_raw not in (None, "") else Decimal("0")
+
+        market_value_raw = raw.get("market_value")
+        if market_value_raw not in (None, ""):
+            market_value = Decimal(str(market_value_raw)).quantize(Decimal("0.01"))
+        else:
+            market_value = (shares * price).quantize(Decimal("0.01"))
+
+        # Back-compute price from market_value / shares when the provider omits `price`
+        # (some brokerages, notably Robinhood via SimpleFIN, don't include it).
+        if price == 0 and shares > 0 and market_value > 0:
+            price = (market_value / shares).quantize(Decimal("0.0001"))
+
+        # Cost basis: treat explicit 0 as "unknown" (e.g., Robinhood doesn't license the
+        # real value to aggregators and returns "0.00"). Fall back to purchase_price × shares
+        # when the provider gives us a per-share cost but not a total.
         cost_basis_raw = raw.get("cost_basis")
-        cost_basis = Decimal(str(cost_basis_raw)) if cost_basis_raw not in (None, "") else None
+        if cost_basis_raw in (None, ""):
+            cost_basis = None
+        else:
+            cost_basis = Decimal(str(cost_basis_raw))
+            if cost_basis == 0:
+                cost_basis = None
+
+        if cost_basis is None:
+            purchase_price_raw = raw.get("purchase_price")
+            if purchase_price_raw not in (None, ""):
+                purchase_price = Decimal(str(purchase_price_raw))
+                if purchase_price != 0 and shares > 0:
+                    cost_basis = (purchase_price * shares).quantize(Decimal("0.01"))
+
         return HoldingData(
             external_id=str(raw["id"]),
             symbol=str(raw.get("symbol", "")).upper(),
