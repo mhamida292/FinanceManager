@@ -32,6 +32,26 @@ class AccountSyncPayload:
     transactions: tuple[TransactionData, ...]
 
 
+@dataclass(frozen=True)
+class HoldingData:
+    external_id: str
+    symbol: str
+    description: str
+    shares: Decimal
+    current_price: Decimal
+    market_value: Decimal
+    cost_basis: Decimal | None   # None = provider didn't return it
+
+
+@dataclass(frozen=True)
+class InvestmentAccountSyncPayload:
+    external_id: str
+    name: str
+    broker: str                   # SimpleFIN's "org.name" if present
+    currency: str
+    holdings: tuple[HoldingData, ...]
+
+
 class FinancialProvider(Protocol):
     """Contract every aggregator implementation must satisfy.
 
@@ -48,4 +68,13 @@ class FinancialProvider(Protocol):
 
     def fetch_accounts_with_transactions(self, access_url: str) -> Iterable[AccountSyncPayload]:
         """Pull every account + its recent transactions in one call."""
+        ...
+
+    def fetch_investment_accounts(self, access_url: str) -> Iterable[InvestmentAccountSyncPayload]:
+        """Investment accounts and their current holdings.
+
+        Implementations may share an underlying API call with
+        fetch_accounts_with_transactions — callers should not rely on whether
+        or not two HTTP calls happen.
+        """
         ...
