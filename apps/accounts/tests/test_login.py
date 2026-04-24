@@ -23,12 +23,12 @@ def test_anonymous_request_to_root_redirects_to_login():
 
 
 @pytest.mark.django_db
-def test_login_with_valid_credentials_lands_on_settings():
+def test_login_with_valid_credentials_lands_on_dashboard():
     User.objects.create_user(username="alice", password="correct-horse-battery-staple")
     client = Client()
     response = client.post(reverse("login"), {"username": "alice", "password": "correct-horse-battery-staple"}, follow=True)
     assert response.status_code == 200
-    assert response.request["PATH_INFO"] == reverse("settings")
+    assert response.request["PATH_INFO"] == "/"
 
 
 @pytest.mark.django_db
