@@ -112,11 +112,11 @@ Both files: empty.
 - [ ] **Step 4: Write `config/settings.py`**
 
 ```python
+import os
 from pathlib import Path
 
 import dj_database_url
 from dotenv import load_dotenv
-import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
@@ -179,6 +179,7 @@ PASSWORD_HASHERS = [
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 12}},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 LANGUAGE_CODE = "en-us"
@@ -188,7 +189,10 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -953,11 +957,24 @@ volumes:
 
 `caddy_data` is critical — that's where the Let's Encrypt cert and account key live. Losing it means re-issuing certs (which Let's Encrypt rate-limits at 5 issuances/week per FQDN).
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Add `SECURE_PROXY_SSL_HEADER` to `config/settings.py`**
+
+Without this, Django sees every request as `http://` (because Caddy terminates TLS) and `request.is_secure()` returns False — which breaks scheme-aware redirects and produces a `W008` system-check warning on every startup.
+
+Append to `config/settings.py`, just below the existing `SESSION_COOKIE_AGE` line:
+
+```python
+# Caddy terminates TLS and forwards the real protocol via X-Forwarded-Proto.
+# Without this, Django thinks every request is plain HTTP. Caddy 2 forwards
+# this header by default in a reverse_proxy block — no Caddyfile change needed.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+```
+
+- [ ] **Step 3: Commit**
 
 ```bash
-git add compose.yml
-git commit -m "build: add caddy proxy service and persistent cert volume"
+git add compose.yml config/settings.py
+git commit -m "build: add caddy proxy service and trust X-Forwarded-Proto header"
 ```
 
 ---
