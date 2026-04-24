@@ -46,12 +46,14 @@ def investments_list(request):
 def account_detail(request, account_id):
     account = get_object_or_404(InvestmentAccount.objects.for_user(request.user), pk=account_id)
     holdings = account.holdings.all().order_by("symbol")
-    total_value = sum((h.market_value for h in holdings), Decimal("0"))
+    holdings_value = sum((h.market_value for h in holdings), Decimal("0"))
+    total_value = holdings_value + account.cash_balance
     total_cost = sum((h.cost_basis or Decimal("0") for h in holdings), Decimal("0"))
     total_gain = total_value - total_cost if total_cost else None
     return render(request, "investments/account_detail.html", {
         "account": account,
         "holdings": holdings,
+        "holdings_value": holdings_value,
         "total_value": total_value,
         "total_cost": total_cost,
         "total_gain": total_gain,

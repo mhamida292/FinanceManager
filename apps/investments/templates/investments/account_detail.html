@@ -27,6 +27,14 @@
   </div>
 </div>
 
+<div class="bg-slate-900 border border-slate-800 rounded p-4 mb-4 flex items-center justify-between">
+  <div>
+    <div class="text-xs text-slate-500 uppercase tracking-wider">Uninvested cash</div>
+    <div class="text-xl font-mono text-blue-100">${{ account.cash_balance|floatformat:2 }}</div>
+  </div>
+  <a href="{% url 'investments:edit_account' account.id %}" class="text-slate-400 hover:text-white text-sm">✎ Edit</a>
+</div>
+
 {% if account.source == 'manual' %}
 <div class="mb-4">
   <a href="{% url 'investments:add_holding' account.id %}" class="text-emerald-400 hover:text-emerald-300 text-sm">+ Add holding</a>
