@@ -169,6 +169,28 @@ def delete_account(request, account_id):
 
 @login_required
 @require_http_methods(["GET", "POST"])
+def edit_account(request, account_id):
+    account = get_object_or_404(InvestmentAccount.objects.for_user(request.user), pk=account_id)
+    if request.method == "POST":
+        account.name = request.POST.get("name", "").strip() or account.name
+        account.broker = request.POST.get("broker", "").strip()
+        account.notes = request.POST.get("notes", "").strip()
+        try:
+            account.cash_balance = _decimal_or_none(request.POST.get("cash_balance", "")) or Decimal("0")
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return render(request, "investments/edit_account_form.html", {"account": account, "data": request.POST})
+        account.save()
+        messages.success(request, f"Updated {account.effective_name}.")
+        return HttpResponseRedirect(reverse("investments:account_detail", args=[account.id]))
+    return render(request, "investments/edit_account_form.html", {"account": account, "data": {
+        "name": account.name, "broker": account.broker, "notes": account.notes,
+        "cash_balance": account.cash_balance,
+    }})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
 def delete_holding(request, holding_id):
     holding = get_object_or_404(Holding.objects.for_user(request.user), pk=holding_id)
     account_id = holding.investment_account_id
