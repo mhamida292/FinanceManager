@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="mb-8">
+  <div class="text-xs text-slate-500 uppercase tracking-wider">Net worth</div>
+  <div class="text-4xl font-bold {% if summary.net_worth < 0 %}text-red-300{% else %}text-emerald-200{% endif %}">
+    ${{ summary.net_worth|floatformat:2 }}
+  </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+  <a href="{% url 'banking:list' %}" class="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded p-5 block">
+    <div class="text-xs text-blue-300 uppercase tracking-wider">Cash</div>
+    <div class="text-2xl font-mono mt-1 {% if summary.cash < 0 %}text-red-300{% else %}text-blue-100{% endif %}">${{ summary.cash|floatformat:2 }}</div>
+    <div class="text-xs text-slate-500 mt-1">{{ summary.cash_account_count }} account{{ summary.cash_account_count|pluralize }}</div>
+  </a>
+  <a href="{% url 'investments:list' %}" class="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded p-5 block">
+    <div class="text-xs text-purple-300 uppercase tracking-wider">Investments</div>
+    <div class="text-2xl font-mono mt-1 text-purple-100">${{ summary.investments|floatformat:2 }}</div>
+    <div class="text-xs text-slate-500 mt-1">{{ summary.investment_holding_count }} position{{ summary.investment_holding_count|pluralize }}</div>
+  </a>
+  <a href="{% url 'assets:list' %}" class="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded p-5 block">
+    <div class="text-xs text-amber-300 uppercase tracking-wider">Assets</div>
+    <div class="text-2xl font-mono mt-1 text-amber-100">${{ summary.assets|floatformat:2 }}</div>
+    <div class="text-xs text-slate-500 mt-1">{{ summary.asset_count }} item{{ summary.asset_count|pluralize }}</div>
+  </a>
+</div>
+
+<div class="text-xs text-slate-500 uppercase tracking-wider mb-2">Recent transactions</div>
+{% if not summary.recent_transactions %}
+  <div class="bg-slate-900 border border-slate-800 rounded p-6 text-slate-400 text-sm">
+    No transactions yet. Link a bank on <a href="{% url 'banking:list' %}" class="text-emerald-400 underline">/banks/</a>.
+  </div>
+{% else %}
+  <div class="bg-slate-900 border border-slate-800 rounded divide-y divide-slate-800">
+    {% for tx in summary.recent_transactions %}
+    <div class="flex items-center justify-between px-5 py-3">
+      <div class="min-w-0 pr-3">
+        <div class="font-medium truncate">{{ tx.payee|default:tx.description }}</div>
+        <div class="text-xs text-slate-500">
+          {{ tx.posted_at|date:"M j" }} · {{ tx.account.effective_name }}
+        </div>
+      </div>
+      <div class="font-mono {% if tx.amount < 0 %}text-red-300{% else %}text-emerald-200{% endif %}">
+        {{ tx.amount }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

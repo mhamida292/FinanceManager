@@ -2,11 +2,12 @@ from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from . import views
+from apps.dashboard import views as dashboard_views
 
 urlpatterns = [
     path("login/", auth_views.LoginView.as_view(template_name="accounts/login.html"), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("settings/", views.SettingsView.as_view(), name="settings"),
-    path("", views.home_redirect, name="home"),
+    path("", dashboard_views.dashboard, name="home"),
     path("healthz", views.healthz, name="healthz"),
 ]
