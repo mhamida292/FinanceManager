@@ -165,3 +165,16 @@ def delete_account(request, account_id):
         messages.success(request, f"Deleted {name} and its holdings.")
         return HttpResponseRedirect(reverse("investments:list"))
     return render(request, "investments/account_confirm_delete.html", {"account": account})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def delete_holding(request, holding_id):
+    holding = get_object_or_404(Holding.objects.for_user(request.user), pk=holding_id)
+    account_id = holding.investment_account_id
+    if request.method == "POST":
+        symbol = holding.symbol
+        holding.delete()
+        messages.success(request, f"Deleted {symbol}.")
+        return HttpResponseRedirect(reverse("investments:account_detail", args=[account_id]))
+    return render(request, "investments/holding_confirm_delete.html", {"holding": holding})

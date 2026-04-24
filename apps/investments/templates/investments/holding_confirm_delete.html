@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ holding.symbol }}{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto mt-10">
+  <h1 class="text-2xl font-bold mb-4">Delete {{ holding.symbol }}?</h1>
+  <p class="text-slate-400 text-sm mb-6">
+    Removes this position ({{ holding.shares }} shares of {{ holding.symbol }}) from
+    <strong class="text-slate-200">{{ holding.investment_account.effective_name }}</strong>.
+    {% if holding.investment_account.source == 'simplefin' %}
+      A subsequent SimpleFIN sync will re-create it if the broker still returns the position.
+    {% endif %}
+  </p>
+  <form method="post" class="flex items-center gap-3">
+    {% csrf_token %}
+    <button type="submit" class="bg-red-600 hover:bg-red-500 text-white font-bold px-5 py-2 rounded">Delete</button>
+    <a href="{% url 'investments:account_detail' holding.investment_account_id %}" class="text-slate-400 hover:text-white text-sm">Cancel</a>
+  </form>
+</div>
+{% endblock %}

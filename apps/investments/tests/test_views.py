@@ -123,3 +123,24 @@ def test_delete_investment_account_forbidden_for_other_user(alice, bob, bob_clie
     acc = InvestmentAccount.objects.create(user=alice, source="manual", broker="F", name="X")
     r = bob_client.post(reverse("investments:delete_account", args=[acc.id]))
     assert r.status_code == 404
+
+
+def test_delete_holding_removes_only_that_holding(alice, alice_client):
+    acc = InvestmentAccount.objects.create(user=alice, source="manual", broker="F", name="A")
+    keep = Holding.objects.create(investment_account=acc, symbol="AAPL", shares=Decimal("1"),
+                                   current_price=Decimal("100"), market_value=Decimal("100"))
+    drop = Holding.objects.create(investment_account=acc, symbol="MSFT", shares=Decimal("1"),
+                                   current_price=Decimal("400"), market_value=Decimal("400"))
+    r = alice_client.post(reverse("investments:delete_holding", args=[drop.id]))
+    assert r.status_code == 302
+    assert Holding.objects.filter(pk=keep.id).exists()
+    assert not Holding.objects.filter(pk=drop.id).exists()
+
+
+def test_delete_holding_forbidden_for_other_user(alice, bob, bob_client):
+    acc = InvestmentAccount.objects.create(user=alice, source="manual", broker="F", name="A")
+    h = Holding.objects.create(investment_account=acc, symbol="AAPL", shares=Decimal("1"),
+                                current_price=Decimal("100"), market_value=Decimal("100"))
+    r = bob_client.post(reverse("investments:delete_holding", args=[h.id]))
+    assert r.status_code == 404
+    assert Holding.objects.filter(pk=h.id).exists()
