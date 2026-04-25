@@ -47,6 +47,11 @@
     </div>
   </div>
   <div class="flex items-center gap-3">
+    <form action="{% url 'sync_all' %}" method="post" class="m-0">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button type="submit" class="p-1 text-sm" style="color: var(--muted);" aria-label="Sync everything" title="Sync everything (banks, investments, assets)">⟳</button>
+    </form>
     <button id="theme-toggle" class="p-1 text-sm" style="color: var(--muted);" aria-label="Toggle theme" title="Toggle theme">
       <span class="theme-icon-dark">☾</span>
       <span class="theme-icon-light hidden">☀</span>
