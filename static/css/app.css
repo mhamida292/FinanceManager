@@ -1,0 +1,121 @@
+/* Design tokens for the finance dashboard.
+   Light theme is opt-in via [data-theme="light"] on <html>.
+   Default (no attribute) = dark.
+*/
+
+:root {
+  /* Surfaces — dark theme defaults */
+  --bg: #020617;
+  --surface: #0f172a;
+  --surface-hover: rgba(30, 41, 59, 0.6);
+  --border: #1e293b;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --dim: #475569;
+
+  /* Accents — same hue across themes, brighter for dark */
+  --accent-cash: #60a5fa;
+  --accent-inv: #a78bfa;
+  --accent-assets: #fbbf24;
+  --accent-lia: #f87171;
+  --accent-positive: #34d399;
+  --accent-negative: #f87171;
+
+  /* Tinted accent backgrounds for nav active states (12% alpha) */
+  --tint-cash: rgba(96, 165, 250, 0.12);
+  --tint-inv: rgba(167, 139, 250, 0.12);
+  --tint-assets: rgba(251, 191, 36, 0.12);
+  --tint-lia: rgba(248, 113, 113, 0.12);
+  --tint-positive: rgba(52, 211, 153, 0.12);
+
+  /* Spacing & radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+}
+
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-hover: #f1f5f9;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
+  --dim: #94a3b8;
+
+  --accent-cash: #2563eb;
+  --accent-inv: #7c3aed;
+  --accent-assets: #d97706;
+  --accent-lia: #dc2626;
+  --accent-positive: #059669;
+  --accent-negative: #dc2626;
+
+  --tint-cash: rgba(37, 99, 235, 0.08);
+  --tint-inv: rgba(124, 58, 237, 0.08);
+  --tint-assets: rgba(217, 119, 6, 0.08);
+  --tint-lia: rgba(220, 38, 38, 0.08);
+  --tint-positive: rgba(5, 150, 105, 0.08);
+}
+
+/* Body resets — Tailwind reset still applies; this layers on top */
+html {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-feature-settings: "cv11", "ss01";  /* Inter stylistic sets — nicer numerals */
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Tabular nums everywhere — finance app */
+.tabnums, table, .num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Monospace number class */
+.mono, .num {
+  font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Smooth theme transitions */
+html, body, .surface {
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+/* Sidebar nav active states get the section's tinted background */
+.nav-active-cash { background: var(--tint-cash); color: var(--accent-cash); }
+.nav-active-inv { background: var(--tint-inv); color: var(--accent-inv); }
+.nav-active-assets { background: var(--tint-assets); color: var(--accent-assets); }
+.nav-active-lia { background: var(--tint-lia); color: var(--accent-lia); }
+.nav-active-default { background: var(--tint-positive); color: var(--accent-positive); }
+
+/* Mobile sidebar drawer behavior */
+@media (max-width: 767px) {
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 220px;
+    transform: translateX(-100%);
+    transition: transform 200ms ease;
+    z-index: 50;
+  }
+  #sidebar.open { transform: translateX(0); }
+  #sidebar-scrim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+  }
+  #sidebar-scrim.open { display: block; }
+}
+@media (min-width: 768px) {
+  #sidebar-scrim { display: none !important; }
+  #hamburger { display: none; }
+}
