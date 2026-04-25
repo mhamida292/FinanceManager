@@ -12,6 +12,7 @@ class LoginRequiredMiddleware:
     EXEMPT_PATH_PREFIXES = (
         "/login/",
         "/logout/",
+        "/signup/",
         "/admin/login/",
         "/static/",
         "/healthz",
