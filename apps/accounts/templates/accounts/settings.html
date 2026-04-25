@@ -15,9 +15,12 @@
   <p class="text-slate-400 text-sm">Signed in as <strong class="text-slate-100">{{ user.username }}</strong>.</p>
 </div>
 
-<h2 class="text-lg font-semibold mb-3">Bank institutions</h2>
+<div class="flex items-center justify-between mb-3">
+  <h2 class="text-lg font-semibold">Bank institutions</h2>
+  <a href="{% url 'banking:link' %}" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded text-sm">+ Link account</a>
+</div>
 {% if not institutions %}
-  <p class="text-slate-500 text-sm mb-6">None linked. Add one at <a href="{% url 'banking:list' %}" class="text-emerald-400 underline">/banks/</a>.</p>
+  <p class="text-slate-500 text-sm mb-6">None linked. Click <strong class="text-slate-200">+ Link account</strong> above to connect a bank via SimpleFIN.</p>
 {% else %}
   <div class="bg-slate-900 border border-slate-800 rounded divide-y divide-slate-800 mb-6">
     {% for inst in institutions %}
