@@ -63,14 +63,14 @@ html {
   color: var(--text);
   font-family: "Inter", system-ui, -apple-system, sans-serif;
   font-feature-settings: "cv11", "ss01";  /* Inter stylistic sets — nicer numerals */
-  /* Belt-and-suspenders: prevent any rogue child from causing page-level horizontal scroll on mobile */
-  overflow-x: hidden;
+  /* `clip` (not `hidden`) prevents page-level horizontal scroll without breaking position: sticky on descendants */
+  overflow-x: clip;
 }
 
 body {
   background: var(--bg);
   color: var(--text);
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Tabular nums everywhere — finance app */
