@@ -55,10 +55,34 @@ def test_export_contains_bank_account_sheet(alice, alice_client):
 
 
 def test_export_includes_holdings_assets_liabilities_sheets(alice, alice_client):
+    inv_acc = InvestmentAccount.objects.create(
+        user=alice, source="manual", broker="Fidelity", name="Alice 401k",
+        cash_balance=Decimal("0"),
+    )
+    Holding.objects.create(
+        investment_account=inv_acc, symbol="AAPL", shares=Decimal("10"),
+        current_price=Decimal("180"), market_value=Decimal("1800"),
+        cost_basis=Decimal("1500"),
+    )
+    Asset.objects.create(user=alice, kind="manual", name="Gold Bar", current_value=Decimal("2500"))
+    Liability.objects.create(user=alice, name="Student Loan", balance=Decimal("12000"))
+
     response = alice_client.get(reverse("exports:xlsx"))
     wb = _load(response)
     for name in ("Holdings", "Assets", "Liabilities"):
         assert name in wb.sheetnames
+
+    holdings_ws = wb["Holdings"]
+    assets_ws = wb["Assets"]
+    liabilities_ws = wb["Liabilities"]
+
+    assert holdings_ws.max_row >= 2
+    assert assets_ws.max_row >= 2
+    assert liabilities_ws.max_row >= 2
+
+    assert holdings_ws.cell(row=2, column=3).value == "AAPL"
+    assert assets_ws.cell(row=2, column=1).value == "Gold Bar"
+    assert liabilities_ws.cell(row=2, column=1).value == "Student Loan"
 
 
 def test_export_excludes_other_users_data(alice, alice_client, django_user_model):
