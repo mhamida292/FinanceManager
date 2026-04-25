@@ -29,8 +29,9 @@
     No assets tracked yet. Click <strong style="color: var(--text);">+ Add</strong> to track gold, art, cars, cash, or anything else.
   </div>
 {% else %}
-  <div class="rounded border overflow-x-auto" style="background: var(--surface); border-color: var(--border);">
-    <table class="w-full text-sm min-w-[560px]">
+  {# Desktop: table #}
+  <div class="hidden md:block rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+    <table class="w-full text-sm">
       <thead style="border-bottom: 1px solid var(--border);">
         <tr class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">
           <th class="px-4 py-2 w-10"></th>
@@ -64,6 +65,32 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+
+  {# Mobile: stacked cards #}
+  <div class="md:hidden rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+    {% for a in assets %}
+    <div class="px-4 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
+      <div class="flex items-baseline justify-between gap-3">
+        <div class="min-w-0 flex-1">
+          <div class="font-medium truncate">
+            <span class="mr-1">{% if a.kind == 'scraped' %}📈{% else %}✎{% endif %}</span>{{ a.name }}
+          </div>
+          {% if a.notes %}<div class="text-xs truncate" style="color: var(--muted);">{{ a.notes }}</div>{% endif %}
+        </div>
+        <div class="num font-semibold whitespace-nowrap" style="color: var(--accent-assets);">${{ a.current_value|floatformat:2 }}</div>
+      </div>
+      <div class="flex items-center justify-between mt-1">
+        <div class="text-xs num" style="color: var(--muted);">
+          {% if a.kind == 'scraped' %}{{ a.quantity }} {{ a.unit }} · {% endif %}{% if a.last_priced_at %}{{ a.last_priced_at|date:"M j" }}{% else %}never{% endif %}
+        </div>
+        <div class="whitespace-nowrap">
+          <a href="{% url 'assets:edit' a.id %}" class="text-sm" style="color: var(--dim);">✎</a>
+          <a href="{% url 'assets:delete' a.id %}" class="text-sm ml-3" style="color: var(--dim);">🗑</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
   </div>
 {% endif %}
 {% endblock %}

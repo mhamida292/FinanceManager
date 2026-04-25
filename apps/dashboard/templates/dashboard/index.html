@@ -55,8 +55,9 @@
     No transactions yet. Link a bank in <a href="{% url 'settings' %}" class="underline" style="color: var(--accent-positive);">Settings</a>.
   </div>
 {% else %}
-  <div class="rounded border overflow-x-auto" style="background: var(--surface); border-color: var(--border);">
-    <table class="w-full text-sm min-w-[480px]">
+  {# Desktop: data-dense table #}
+  <div class="hidden md:block rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+    <table class="w-full text-sm">
       <thead style="border-bottom: 1px solid var(--border); color: var(--dim);">
         <tr class="text-[10px] uppercase tracking-widest">
           <th class="px-4 py-2 text-left w-20">Date</th>
@@ -78,6 +79,23 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+
+  {# Mobile: stacked cards — one row per transaction #}
+  <div class="md:hidden rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+    {% for tx in summary.recent_transactions %}
+    <div class="px-4 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
+      <div class="flex items-baseline justify-between gap-3">
+        <div class="font-medium truncate min-w-0">{{ tx.payee|default:tx.description }}</div>
+        <div class="num font-semibold whitespace-nowrap" style="color: {% if tx.amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+          {% if tx.amount >= 0 %}+{% endif %}${{ tx.amount|floatformat:2 }}
+        </div>
+      </div>
+      <div class="text-xs mt-0.5 truncate" style="color: var(--muted);">
+        <span class="num">{{ tx.posted_at|date:"M d" }}</span> · {{ tx.account.effective_name }}
+      </div>
+    </div>
+    {% endfor %}
   </div>
 {% endif %}
 

@@ -47,8 +47,9 @@
     No holdings yet.
   </div>
 {% else %}
-  <div class="rounded border overflow-x-auto" style="background: var(--surface); border-color: var(--border);">
-    <table class="w-full text-sm min-w-[820px]">
+  {# Desktop: full table including cost basis #}
+  <div class="hidden md:block rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+    <table class="w-full text-sm">
       <thead style="border-bottom: 1px solid var(--border);">
         <tr class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">
           <th class="px-4 py-2 text-left">Symbol</th>
@@ -90,6 +91,33 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+
+  {# Mobile: stacked cards — cost basis dropped (visible on desktop only) #}
+  <div class="md:hidden rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+    {% for h in holdings %}
+    <div class="px-4 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
+      <div class="flex items-baseline justify-between gap-3">
+        <div class="num font-semibold truncate min-w-0">{{ h.symbol }}</div>
+        <div class="num font-semibold whitespace-nowrap" style="color: var(--accent-positive);">${{ h.market_value|floatformat:2 }}</div>
+      </div>
+      <div class="flex items-baseline justify-between gap-3 mt-1">
+        <div class="text-xs num" style="color: var(--muted);">
+          <span class="num">{{ h.shares }}</span> sh @ <span class="num">${{ h.current_price|floatformat:2 }}</span>
+        </div>
+        {% if h.gain_loss is not None %}
+        <div class="text-xs num whitespace-nowrap" style="color: {% if h.gain_loss < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+          {% if h.gain_loss >= 0 %}+{% endif %}${{ h.gain_loss|floatformat:2 }}
+          · {% if h.gain_loss_percent >= 0 %}+{% endif %}{{ h.gain_loss_percent|floatformat:2 }}%
+        </div>
+        {% endif %}
+      </div>
+      <div class="text-right mt-1 whitespace-nowrap">
+        <a href="{% url 'investments:edit_holding' h.id %}" class="text-sm" style="color: var(--dim);" title="Edit">✎</a>
+        <a href="{% url 'investments:delete_holding' h.id %}" class="text-sm ml-3" style="color: var(--dim);" title="Delete">🗑</a>
+      </div>
+    </div>
+    {% endfor %}
   </div>
 {% endif %}
 {% endblock %}
