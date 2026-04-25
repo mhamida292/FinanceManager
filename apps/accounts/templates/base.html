@@ -69,8 +69,8 @@
 {# ============ LAYOUT ============ #}
 <div class="flex">
 
-  {# Sidebar: hidden on mobile (Tailwind `hidden`); .open class in app.css renders it as a fixed overlay #}
-  <nav id="sidebar" class="hidden md:block md:sticky md:top-[52px] md:h-[calc(100vh-52px)] w-[180px] flex-shrink-0 border-r p-4 overflow-y-auto" style="background: var(--surface); border-color: var(--border);">
+  {# Sidebar: off-canvas drawer on mobile (translateX(-100%) by default; .open slides in via transform transition). On desktop, md:sticky lays it out normally. #}
+  <nav id="sidebar" class="md:sticky md:top-[52px] md:h-[calc(100vh-52px)] w-[180px] flex-shrink-0 border-r p-4 overflow-y-auto" style="background: var(--surface); border-color: var(--border);">
     <div class="text-[10px] font-semibold tracking-widest mb-2" style="color: var(--dim);">VIEW</div>
     {% with active=request.resolver_match.namespace|default:request.resolver_match.url_name %}
       <a href="{% url 'home' %}" class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5 {% if request.path == '/' %}nav-active-default{% endif %}" style="{% if request.path != '/' %}color: var(--muted);{% endif %}">Dashboard</a>
