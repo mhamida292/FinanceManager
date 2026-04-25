@@ -51,3 +51,13 @@ def test_signed_kwarg_shows_plus_for_positive():
 
 def test_signed_kwarg_keeps_minus_for_negative():
     assert render("{{ v|money:'signed' }}", {"v": Decimal("-523.10")}) == "−$523.10"
+
+
+def test_liability_mode_prefixes_minus_on_positive():
+    """Liabilities stored as positive Decimals render with a minus sign."""
+    assert render("{{ v|money:'liability' }}", {"v": Decimal("1500")}) == "−$1,500.00"
+
+
+def test_liability_mode_minus_on_zero_too():
+    """Even zero gets a minus in liability mode (consistent rendering for empty liability rows)."""
+    assert render("{{ v|money:'liability' }}", {"v": Decimal("0")}) == "−$0.00"

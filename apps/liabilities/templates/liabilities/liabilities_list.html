@@ -5,7 +5,7 @@
 <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
   <div>
     <h1 class="text-2xl font-bold">Liabilities</h1>
-    <div class="text-sm" style="color: var(--muted);">Total owed: <span class="num font-semibold" style="color: var(--accent-lia);">{{ total|money }}</span></div>
+    <div class="text-sm" style="color: var(--muted);">Total owed: <span class="num font-semibold" style="color: var(--accent-lia);">{{ total|money:"liability" }}</span></div>
   </div>
   <a href="{% url 'liabilities:add' %}" class="font-bold px-4 py-2 rounded" style="background: var(--accent-positive); color: var(--bg);">+ Add manual liability</a>
 </div>
@@ -39,7 +39,7 @@
         </div>
       {% endif %}
       <div class="flex items-center gap-3">
-        <div class="num font-semibold" style="color: var(--accent-lia);">−{{ row.balance|money }}</div>
+        <div class="num font-semibold" style="color: var(--accent-lia);">{{ row.balance|money:"liability" }}</div>
         {% if row.source == 'manual' %}
         <a href="{% url 'liabilities:edit' row.liability_id %}" class="text-sm" style="color: var(--dim);">✎</a>
         <a href="{% url 'liabilities:delete' row.liability_id %}" class="text-sm" style="color: var(--dim);">🗑</a>

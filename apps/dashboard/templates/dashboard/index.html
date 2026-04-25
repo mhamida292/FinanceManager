@@ -39,7 +39,7 @@
 
   <a href="{% url 'liabilities:list' %}" class="rounded p-4 border block hover:border-opacity-100 transition" style="background: var(--surface); border-color: var(--border);">
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Liabilities</div>
-    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-lia);">−{{ summary.liabilities|money }}</div>
+    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-lia);">{{ summary.liabilities|money:"liability" }}</div>
     <div class="text-[10px] mt-1" style="color: var(--dim);">credit + loans + manual</div>
   </a>
 
