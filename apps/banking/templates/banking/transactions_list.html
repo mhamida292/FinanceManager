@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load money %}
+{% block title %}Transactions{% endblock %}
+{% block content %}
+
+<div class="flex items-end justify-between mb-6 flex-wrap gap-3">
+  <h1 class="text-2xl font-bold">Transactions</h1>
+  <div class="text-xs num" style="color: var(--muted);">
+    Showing <span class="num">{{ page_obj.start_index }}</span>–<span class="num">{{ page_obj.end_index }}</span> of <span class="num">{{ page_obj.paginator.count }}</span>
+  </div>
+</div>
+
+{# Filter toolbar #}
+<form method="get" class="rounded border p-3 mb-4 flex flex-wrap gap-2 items-center" style="background: var(--surface); border-color: var(--border);">
+  <select name="account" class="text-sm rounded px-2 py-1.5" style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
+    <option value="">All accounts</option>
+    {% for a in accounts %}
+    <option value="{{ a.id }}" {% if a.id == selected_account %}selected{% endif %}>{{ a.effective_name }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="range" class="text-sm rounded px-2 py-1.5" style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
+    <option value="" {% if not selected_range %}selected{% endif %}>All dates</option>
+    <option value="30d" {% if selected_range == "30d" %}selected{% endif %}>Last 30 days</option>
+    <option value="90d" {% if selected_range == "90d" %}selected{% endif %}>Last 90 days</option>
+    <option value="ytd" {% if selected_range == "ytd" %}selected{% endif %}>Year to date</option>
+    <option value="1y" {% if selected_range == "1y" %}selected{% endif %}>Last 12 months</option>
+  </select>
+
+  <input type="search" name="q" value="{{ search }}" placeholder="Search payee / memo" class="text-sm rounded px-3 py-1.5 flex-1 min-w-[150px]" style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
+
+  <button type="submit" class="text-sm font-bold px-3 py-1.5 rounded" style="background: var(--accent-positive); color: var(--bg);">Apply</button>
+  {% if selected_account or selected_range or search %}
+    <a href="{% url 'transactions' %}" class="text-sm" style="color: var(--muted);">Clear</a>
+  {% endif %}
+</form>
+
+{% if not page_obj.object_list %}
+  <div class="rounded border p-6 text-sm" style="background: var(--surface); border-color: var(--border); color: var(--muted);">
+    No transactions match your filters.
+  </div>
+{% else %}
+  {# Desktop table #}
+  <div class="hidden md:block rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+    <table class="w-full text-sm">
+      <thead style="border-bottom: 1px solid var(--border); color: var(--dim);">
+        <tr class="text-[10px] uppercase tracking-widest">
+          <th class="px-4 py-2 text-left w-28">Date</th>
+          <th class="px-4 py-2 text-left">Payee</th>
+          <th class="px-4 py-2 text-right w-40">Account</th>
+          <th class="px-4 py-2 text-right w-32">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in page_obj.object_list %}
+        <tr style="border-top: 1px solid var(--border);">
+          <td class="px-4 py-2 num text-xs" style="color: var(--muted);">{{ tx.posted_at|date:"M j, Y" }}{% if tx.pending %} <span style="color: var(--accent-assets);">·pending</span>{% endif %}</td>
+          <td class="px-4 py-2 truncate">{{ tx.payee|default:tx.description }}</td>
+          <td class="px-4 py-2 text-right text-xs truncate" style="color: var(--muted);">
+            <a href="{% url 'banking:account_detail' tx.account.id %}">{{ tx.account.effective_name }}</a>
+          </td>
+          <td class="px-4 py-2 text-right num font-semibold" style="color: {% if tx.amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+            {{ tx.amount|money:"signed" }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Mobile cards #}
+  <div class="md:hidden rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+    {% for tx in page_obj.object_list %}
+    <div class="px-4 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
+      <div class="flex items-baseline justify-between gap-3">
+        <div class="font-medium truncate min-w-0">{{ tx.payee|default:tx.description }}</div>
+        <div class="num font-semibold whitespace-nowrap" style="color: {% if tx.amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+          {{ tx.amount|money:"signed" }}
+        </div>
+      </div>
+      <div class="text-xs mt-0.5 truncate" style="color: var(--muted);">
+        <span class="num">{{ tx.posted_at|date:"M j, Y" }}</span> · <a href="{% url 'banking:account_detail' tx.account.id %}">{{ tx.account.effective_name }}</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# Pagination — preserves existing query string #}
+  {% if page_obj.has_other_pages %}
+  <div class="mt-4 flex items-center justify-between text-sm">
+    <div style="color: var(--muted);">Page <span class="num">{{ page_obj.number }}</span> of <span class="num">{{ page_obj.paginator.num_pages }}</span></div>
+    <div class="flex gap-3">
+      {% if page_obj.has_previous %}
+        <a href="?{% if selected_account %}account={{ selected_account }}&{% endif %}{% if selected_range %}range={{ selected_range }}&{% endif %}{% if search %}q={{ search|urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}" style="color: var(--accent-positive);">← Prev</a>
+      {% else %}
+        <span style="color: var(--dim);">← Prev</span>
+      {% endif %}
+      {% if page_obj.has_next %}
+        <a href="?{% if selected_account %}account={{ selected_account }}&{% endif %}{% if selected_range %}range={{ selected_range }}&{% endif %}{% if search %}q={{ search|urlencode }}&{% endif %}page={{ page_obj.next_page_number }}" style="color: var(--accent-positive);">Next →</a>
+      {% else %}
+        <span style="color: var(--dim);">Next →</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+{% endif %}
+
+{% endblock %}

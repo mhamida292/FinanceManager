@@ -47,8 +47,7 @@
 
 <div class="flex items-center justify-between mb-2">
   <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Latest transactions</div>
-  {# See-all link reserved for /transactions/ which lands in Phase 7 — placeholder for now #}
-  <span class="text-xs" style="color: var(--dim);">(See all → coming in Phase 7)</span>
+  <a href="{% url 'transactions' %}" class="text-xs" style="color: var(--accent-positive);">See all →</a>
 </div>
 
 {% if not summary.recent_transactions %}

@@ -1,5 +1,9 @@
+from datetime import date, timedelta
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -128,3 +132,46 @@ def delete_account(request, account_id):
         messages.success(request, f"Deleted {name} and its transactions.")
         return HttpResponseRedirect(reverse("banking:list"))
     return render(request, "banking/account_confirm_delete.html", {"account": account})
+
+
+@login_required
+def transactions_list(request):
+    qs = (
+        Transaction.objects
+        .filter(account__institution__user=request.user)
+        .select_related("account", "account__institution")
+        .order_by("-posted_at", "-id")
+    )
+
+    # Filters
+    account_id = request.GET.get("account")
+    if account_id and account_id.isdigit():
+        qs = qs.filter(account_id=int(account_id))
+
+    preset = request.GET.get("range", "")
+    today = date.today()
+    if preset == "30d":
+        qs = qs.filter(posted_at__gte=today - timedelta(days=30))
+    elif preset == "90d":
+        qs = qs.filter(posted_at__gte=today - timedelta(days=90))
+    elif preset == "ytd":
+        qs = qs.filter(posted_at__gte=date(today.year, 1, 1))
+    elif preset == "1y":
+        qs = qs.filter(posted_at__gte=today - timedelta(days=365))
+
+    search = (request.GET.get("q") or "").strip()
+    if search:
+        qs = qs.filter(Q(payee__icontains=search) | Q(description__icontains=search) | Q(memo__icontains=search))
+
+    paginator = Paginator(qs, 50)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    accounts = Account.objects.for_user(request.user).order_by("institution__name", "name")
+
+    return render(request, "banking/transactions_list.html", {
+        "page_obj": page_obj,
+        "accounts": accounts,
+        "selected_account": int(account_id) if account_id and account_id.isdigit() else None,
+        "selected_range": preset,
+        "search": search,
+    })
