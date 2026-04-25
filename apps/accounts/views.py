@@ -1,7 +1,10 @@
 from django.contrib import messages
+from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse, HttpResponseRedirect
+from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
@@ -36,6 +39,20 @@ class SettingsView(LoginRequiredMixin, TemplateView):
 
 def healthz(request):
     return HttpResponse("ok", content_type="text/plain")
+
+
+@require_http_methods(["GET", "POST"])
+def signup(request):
+    """Open signup. Access is gated at the network layer (Tailscale-only)."""
+    if request.method == "POST":
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            return HttpResponseRedirect(reverse("home"))
+    else:
+        form = UserCreationForm()
+    return render(request, "accounts/signup.html", {"form": form})
 
 
 @login_required

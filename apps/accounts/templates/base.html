@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{% block title %}FinLab{% endblock %} · momajlab</title>
+  <title>{% block title %}FinLab{% endblock %} · FinLab</title>
 
   {# Set theme BEFORE paint to avoid flash. Reads localStorage, falls back to OS pref. #}
   <script>
@@ -27,7 +27,7 @@
   <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)">
 
   {# Self-hosted fonts — preload the variable woff2 for fast first paint #}
-  <link rel="preload" href="{% static 'fonts/Inter-Variable.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{% static 'fonts/SpaceGrotesk-Variable.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="{% static 'fonts/JetBrainsMono-Variable.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
@@ -43,8 +43,13 @@
     <button id="hamburger" class="md:hidden p-1" style="color: var(--muted);" aria-label="Open menu" onclick="document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebar-scrim').classList.toggle('open');">
       ☰
     </button>
-    <a href="{% url 'home' %}" class="flex items-center" aria-label="Home">
-      <img src="{% static 'logo-lockup.svg' %}" alt="Finance" class="h-6">
+    <a href="{% url 'home' %}" class="flex items-center" aria-label="FinLab home">
+      {# Inlined so the SVG <text> picks up the page's Space Grotesk font (img-loaded SVGs can't see page fonts) #}
+      <svg viewBox="0 0 110 32" class="h-6" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M3.5 22 L11 14.5 L15 18.5 L24 9.5" stroke="#15803d" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="24" cy="9.5" r="1.9" fill="#15803d"/>
+        <text x="32" y="22" font-family="'Space Grotesk', system-ui, sans-serif" font-weight="700" font-size="14" letter-spacing="2" fill="#15803d">FINLAB</text>
+      </svg>
     </a>
   </div>
   <div class="flex items-center gap-3">

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Sign in{% endblock %}
+{% block title %}Create account{% endblock %}
 {% block anonymous_content %}
 <div class="min-h-screen flex items-center justify-center p-6">
   <div class="w-full max-w-sm">
@@ -20,23 +20,32 @@
       <div>
         <label class="block text-xs uppercase tracking-wider mb-1" style="color: var(--muted);" for="id_username">Username</label>
         <input id="id_username" name="username" type="text" autocomplete="username" required
+               value="{{ form.username.value|default:'' }}"
                class="w-full px-3 py-2 rounded border outline-none focus:ring-2"
                style="background: var(--bg); border-color: var(--border); color: var(--text);">
+        {% if form.username.errors %}<div class="text-xs mt-1" style="color: var(--accent-negative);">{{ form.username.errors|join:" " }}</div>{% endif %}
       </div>
       <div>
-        <label class="block text-xs uppercase tracking-wider mb-1" style="color: var(--muted);" for="id_password">Password</label>
-        <input id="id_password" name="password" type="password" autocomplete="current-password" required
+        <label class="block text-xs uppercase tracking-wider mb-1" style="color: var(--muted);" for="id_password1">Password</label>
+        <input id="id_password1" name="password1" type="password" autocomplete="new-password" required
                class="w-full px-3 py-2 rounded border outline-none focus:ring-2"
                style="background: var(--bg); border-color: var(--border); color: var(--text);">
+        {% if form.password1.errors %}<div class="text-xs mt-1" style="color: var(--accent-negative);">{{ form.password1.errors|join:" " }}</div>{% endif %}
+      </div>
+      <div>
+        <label class="block text-xs uppercase tracking-wider mb-1" style="color: var(--muted);" for="id_password2">Confirm password</label>
+        <input id="id_password2" name="password2" type="password" autocomplete="new-password" required
+               class="w-full px-3 py-2 rounded border outline-none focus:ring-2"
+               style="background: var(--bg); border-color: var(--border); color: var(--text);">
+        {% if form.password2.errors %}<div class="text-xs mt-1" style="color: var(--accent-negative);">{{ form.password2.errors|join:" " }}</div>{% endif %}
       </div>
       <button type="submit" class="w-full py-2 rounded font-semibold"
               style="background: var(--accent-positive); color: var(--bg);">
-        Sign in
+        Create account
       </button>
-      <input type="hidden" name="next" value="{{ next }}">
     </form>
     <p class="text-center text-sm mt-4" style="color: var(--muted);">
-      Don't have an account? <a href="{% url 'signup' %}" style="color: var(--accent-positive);">Create one</a>
+      Already have an account? <a href="{% url 'login' %}" style="color: var(--accent-positive);">Sign in</a>
     </p>
   </div>
 </div>

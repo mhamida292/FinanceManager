@@ -62,8 +62,7 @@
 html {
   background: var(--bg);
   color: var(--text);
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
-  font-feature-settings: "cv11", "ss01";  /* Inter stylistic sets — nicer numerals */
+  font-family: "Space Grotesk", "Inter", system-ui, -apple-system, sans-serif;
   /* `clip` (not `hidden`) prevents page-level horizontal scroll without breaking position: sticky on descendants */
   overflow-x: clip;
 }
