@@ -1,56 +1,84 @@
 {% extends "base.html" %}
+{% load sparkline %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-<div class="mb-8">
-  <div class="text-xs text-slate-500 uppercase tracking-wider">Net worth</div>
-  <div class="text-4xl font-bold {% if summary.net_worth < 0 %}text-red-300{% else %}text-emerald-200{% endif %}">
-    ${{ summary.net_worth|floatformat:2 }}
+
+<div class="flex items-end justify-between mb-6 flex-wrap gap-4">
+  <div>
+    <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Net worth</div>
+    <div class="text-4xl font-bold num mt-1" style="color: {% if summary.net_worth < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+      ${{ summary.net_worth|floatformat:2 }}
+    </div>
+  </div>
+  <div class="flex items-center gap-3">
+    {% sparkline history %}
+    <div class="text-xs" style="color: var(--muted);">30 days</div>
   </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-  <a href="{% url 'banking:list' %}" class="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded p-5 block">
-    <div class="text-xs text-blue-300 uppercase tracking-wider">Cash</div>
-    <div class="text-2xl font-mono mt-1 {% if summary.cash < 0 %}text-red-300{% else %}text-blue-100{% endif %}">${{ summary.cash|floatformat:2 }}</div>
-    <div class="text-xs text-slate-500 mt-1">{{ summary.cash_account_count }} account{{ summary.cash_account_count|pluralize }}</div>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+
+  <a href="{% url 'banking:list' %}" class="rounded p-4 border block hover:border-opacity-100 transition" style="background: var(--surface); border-color: var(--border);">
+    <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Cash</div>
+    <div class="text-xl font-bold num mt-1" style="color: var(--accent-cash);">${{ summary.cash|floatformat:2 }}</div>
+    <div class="text-[10px] mt-1" style="color: var(--dim);">{{ summary.cash_account_count }} account{{ summary.cash_account_count|pluralize }}</div>
   </a>
-  <a href="{% url 'investments:list' %}" class="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded p-5 block">
-    <div class="text-xs text-purple-300 uppercase tracking-wider">Investments</div>
-    <div class="text-2xl font-mono mt-1 text-purple-100">${{ summary.investments|floatformat:2 }}</div>
-    <div class="text-xs text-slate-500 mt-1">{{ summary.investment_holding_count }} position{{ summary.investment_holding_count|pluralize }}</div>
+
+  <a href="{% url 'investments:list' %}" class="rounded p-4 border block hover:border-opacity-100 transition" style="background: var(--surface); border-color: var(--border);">
+    <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Investments</div>
+    <div class="text-xl font-bold num mt-1" style="color: var(--accent-inv);">${{ summary.investments|floatformat:2 }}</div>
+    <div class="text-[10px] mt-1" style="color: var(--dim);">{{ summary.investment_holding_count }} position{{ summary.investment_holding_count|pluralize }}</div>
   </a>
-  <a href="{% url 'assets:list' %}" class="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded p-5 block">
-    <div class="text-xs text-amber-300 uppercase tracking-wider">Assets</div>
-    <div class="text-2xl font-mono mt-1 text-amber-100">${{ summary.assets|floatformat:2 }}</div>
-    <div class="text-xs text-slate-500 mt-1">{{ summary.asset_count }} item{{ summary.asset_count|pluralize }}</div>
+
+  <a href="{% url 'assets:list' %}" class="rounded p-4 border block hover:border-opacity-100 transition" style="background: var(--surface); border-color: var(--border);">
+    <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Assets</div>
+    <div class="text-xl font-bold num mt-1" style="color: var(--accent-assets);">${{ summary.assets|floatformat:2 }}</div>
+    <div class="text-[10px] mt-1" style="color: var(--dim);">{{ summary.asset_count }} item{{ summary.asset_count|pluralize }}</div>
   </a>
-  <a href="{% url 'liabilities:list' %}" class="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded p-5 block">
-    <div class="text-xs text-red-300 uppercase tracking-wider">Liabilities</div>
-    <div class="text-2xl font-mono mt-1 text-red-200">−${{ summary.liabilities|floatformat:2 }}</div>
-    <div class="text-xs text-slate-500 mt-1">credit + loans + manual</div>
+
+  <a href="{% url 'liabilities:list' %}" class="rounded p-4 border block hover:border-opacity-100 transition" style="background: var(--surface); border-color: var(--border);">
+    <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Liabilities</div>
+    <div class="text-xl font-bold num mt-1" style="color: var(--accent-lia);">−${{ summary.liabilities|floatformat:2 }}</div>
+    <div class="text-[10px] mt-1" style="color: var(--dim);">credit + loans + manual</div>
   </a>
+
 </div>
 
-<div class="text-xs text-slate-500 uppercase tracking-wider mb-2">Recent transactions</div>
+<div class="flex items-center justify-between mb-2">
+  <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Latest transactions</div>
+  {# See-all link reserved for /transactions/ which lands in Phase 7 — placeholder for now #}
+  <span class="text-xs" style="color: var(--dim);">(See all → coming in Phase 7)</span>
+</div>
+
 {% if not summary.recent_transactions %}
-  <div class="bg-slate-900 border border-slate-800 rounded p-6 text-slate-400 text-sm">
-    No transactions yet. Link a bank on <a href="{% url 'banking:list' %}" class="text-emerald-400 underline">/banks/</a>.
+  <div class="rounded border p-6 text-sm" style="background: var(--surface); border-color: var(--border); color: var(--muted);">
+    No transactions yet. Link a bank in <a href="{% url 'settings' %}" class="underline" style="color: var(--accent-positive);">Settings</a>.
   </div>
 {% else %}
-  <div class="bg-slate-900 border border-slate-800 rounded divide-y divide-slate-800">
-    {% for tx in summary.recent_transactions %}
-    <div class="flex items-center justify-between px-5 py-3">
-      <div class="min-w-0 pr-3">
-        <div class="font-medium truncate">{{ tx.payee|default:tx.description }}</div>
-        <div class="text-xs text-slate-500">
-          {{ tx.posted_at|date:"M j" }} · {{ tx.account.effective_name }}
-        </div>
-      </div>
-      <div class="font-mono {% if tx.amount < 0 %}text-red-300{% else %}text-emerald-200{% endif %}">
-        {{ tx.amount }}
-      </div>
-    </div>
-    {% endfor %}
+  <div class="rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+    <table class="w-full text-sm">
+      <thead style="border-bottom: 1px solid var(--border); color: var(--dim);">
+        <tr class="text-[10px] uppercase tracking-widest">
+          <th class="px-4 py-2 text-left w-20">Date</th>
+          <th class="px-4 py-2 text-left">Payee</th>
+          <th class="px-4 py-2 text-right w-32">Account</th>
+          <th class="px-4 py-2 text-right w-28">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in summary.recent_transactions %}
+        <tr style="border-top: 1px solid var(--border);">
+          <td class="px-4 py-2 num text-xs" style="color: var(--muted);">{{ tx.posted_at|date:"M d" }}</td>
+          <td class="px-4 py-2 truncate">{{ tx.payee|default:tx.description }}</td>
+          <td class="px-4 py-2 text-right text-xs" style="color: var(--muted);">{{ tx.account.effective_name }}</td>
+          <td class="px-4 py-2 text-right num font-semibold" style="color: {% if tx.amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+            {% if tx.amount >= 0 %}+{% endif %}${{ tx.amount|floatformat:2 }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 {% endif %}
+
 {% endblock %}
