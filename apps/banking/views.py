@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -7,6 +7,7 @@ from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from .models import Account, Institution, Transaction
@@ -149,13 +150,13 @@ def transactions_list(request):
         qs = qs.filter(account_id=int(account_id))
 
     preset = request.GET.get("range", "")
-    today = date.today()
+    today = timezone.localdate()
     if preset == "30d":
         qs = qs.filter(posted_at__gte=today - timedelta(days=30))
     elif preset == "90d":
         qs = qs.filter(posted_at__gte=today - timedelta(days=90))
     elif preset == "ytd":
-        qs = qs.filter(posted_at__gte=date(today.year, 1, 1))
+        qs = qs.filter(posted_at__gte=today.replace(month=1, day=1))
     elif preset == "1y":
         qs = qs.filter(posted_at__gte=today - timedelta(days=365))
 

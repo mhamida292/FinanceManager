@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime, timezone as dt_tz
 from decimal import Decimal
 
 import pytest
@@ -179,8 +179,8 @@ def test_transactions_list_shows_only_own(alice, bob, alice_client):
                                    balance=Decimal("0"), external_id="A-1")
     b_acc = Account.objects.create(institution=b_inst, name="B Checking", type="checking",
                                    balance=Decimal("0"), external_id="B-1")
-    Transaction.objects.create(account=a_acc, posted_at=date(2026, 4, 1), amount=Decimal("-10"), payee="Alice Coffee", external_id="t-a")
-    Transaction.objects.create(account=b_acc, posted_at=date(2026, 4, 1), amount=Decimal("-20"), payee="Bob Coffee", external_id="t-b")
+    Transaction.objects.create(account=a_acc, posted_at=datetime(2026, 4, 1, tzinfo=dt_tz.utc), amount=Decimal("-10"), payee="Alice Coffee", external_id="t-a")
+    Transaction.objects.create(account=b_acc, posted_at=datetime(2026, 4, 1, tzinfo=dt_tz.utc), amount=Decimal("-20"), payee="Bob Coffee", external_id="t-b")
 
     response = alice_client.get(reverse("transactions"))
     assert b"Alice Coffee" in response.content
@@ -193,8 +193,8 @@ def test_transactions_filter_by_account(alice, alice_client):
                                   balance=Decimal("0"), external_id="A-1")
     acc2 = Account.objects.create(institution=inst, name="Savings", type="savings",
                                   balance=Decimal("0"), external_id="A-2")
-    Transaction.objects.create(account=acc1, posted_at=date(2026, 4, 1), amount=Decimal("-10"), payee="Coffee A", external_id="t1")
-    Transaction.objects.create(account=acc2, posted_at=date(2026, 4, 1), amount=Decimal("-20"), payee="Coffee B", external_id="t2")
+    Transaction.objects.create(account=acc1, posted_at=datetime(2026, 4, 1, tzinfo=dt_tz.utc), amount=Decimal("-10"), payee="Coffee A", external_id="t1")
+    Transaction.objects.create(account=acc2, posted_at=datetime(2026, 4, 1, tzinfo=dt_tz.utc), amount=Decimal("-20"), payee="Coffee B", external_id="t2")
 
     response = alice_client.get(reverse("transactions"), {"account": acc1.id})
     assert b"Coffee A" in response.content
@@ -205,8 +205,8 @@ def test_transactions_search_payee(alice, alice_client):
     inst = Institution.objects.create(user=alice, name="A Bank", access_url="https://a.example")
     acc = Account.objects.create(institution=inst, name="Checking", type="checking",
                                  balance=Decimal("0"), external_id="A-1")
-    Transaction.objects.create(account=acc, posted_at=date(2026, 4, 1), amount=Decimal("-10"), payee="Trader Joes", external_id="t1")
-    Transaction.objects.create(account=acc, posted_at=date(2026, 4, 1), amount=Decimal("-20"), payee="Whole Foods", external_id="t2")
+    Transaction.objects.create(account=acc, posted_at=datetime(2026, 4, 1, tzinfo=dt_tz.utc), amount=Decimal("-10"), payee="Trader Joes", external_id="t1")
+    Transaction.objects.create(account=acc, posted_at=datetime(2026, 4, 1, tzinfo=dt_tz.utc), amount=Decimal("-20"), payee="Whole Foods", external_id="t2")
 
     response = alice_client.get(reverse("transactions"), {"q": "trader"})
     assert b"Trader Joes" in response.content
@@ -218,7 +218,7 @@ def test_transactions_pagination(alice, alice_client):
     acc = Account.objects.create(institution=inst, name="Checking", type="checking",
                                  balance=Decimal("0"), external_id="A-1")
     for i in range(60):
-        Transaction.objects.create(account=acc, posted_at=date(2026, 4, 1), amount=Decimal("-1"),
+        Transaction.objects.create(account=acc, posted_at=datetime(2026, 4, 1, tzinfo=dt_tz.utc), amount=Decimal("-1"),
                                    payee=f"tx-{i}", external_id=f"e-{i}")
     response = alice_client.get(reverse("transactions"))
     assert response.context["page_obj"].number == 1
