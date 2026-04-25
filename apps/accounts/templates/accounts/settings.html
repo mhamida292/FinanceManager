@@ -89,4 +89,12 @@
   {% csrf_token %}
   <button type="submit" class="text-sm border px-3 py-2 rounded" style="border-color: var(--border); color: var(--muted);">⟳ Refresh all scraped assets</button>
 </form>
+
+<h2 class="text-lg font-semibold mb-3">Export</h2>
+<div class="rounded border p-5 mb-6" style="background: var(--surface); border-color: var(--border);">
+  <p class="text-sm mb-3" style="color: var(--muted);">
+    Download a snapshot of every account, holding, asset, and liability as an Excel workbook (one sheet per bank account).
+  </p>
+  <a href="{% url 'exports:xlsx' %}" class="font-bold px-4 py-2 rounded inline-block" style="background: var(--accent-positive); color: var(--bg);">↓ Download .xlsx</a>
+</div>
 {% endblock %}

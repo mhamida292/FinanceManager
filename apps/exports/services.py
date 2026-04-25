@@ -1,3 +1,4 @@
+from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -12,6 +13,15 @@ HEADER_FONT = Font(bold=True, color="FFFFFF")
 HEADER_FILL = PatternFill("solid", fgColor="404040")
 RIGHT = Alignment(horizontal="right")
 MONEY_FORMAT = '"$"#,##0.00;[Red]-"$"#,##0.00'
+
+
+def _naive(dt):
+    """openpyxl can't serialize tz-aware datetimes. Convert to local wall time, then strip tzinfo."""
+    if dt is None:
+        return None
+    if timezone.is_aware(dt):
+        return timezone.localtime(dt).replace(tzinfo=None)
+    return dt
 
 
 def _autosize(ws, min_width: int = 10, max_width: int = 50) -> None:
@@ -48,7 +58,7 @@ def build_workbook(*, user) -> Workbook:
         rows = acc.transactions.order_by("-posted_at", "-id")
         for tx in rows:
             ws.append([
-                tx.posted_at,
+                _naive(tx.posted_at),
                 tx.payee or tx.description or "",
                 tx.memo or "",
                 float(tx.amount),
@@ -94,7 +104,7 @@ def build_workbook(*, user) -> Workbook:
             float(a.quantity) if a.quantity else "",
             a.unit or "",
             float(a.current_value or 0),
-            a.last_priced_at,
+            _naive(a.last_priced_at),
             a.notes or "",
         ])
     for r in range(2, ws.max_row + 1):

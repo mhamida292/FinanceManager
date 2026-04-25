@@ -52,7 +52,6 @@
       <input type="hidden" name="next" value="{{ request.get_full_path }}">
       <button type="submit" class="p-1 text-sm" style="color: var(--muted);" aria-label="Sync everything" title="Sync everything (banks, investments, assets)">⟳</button>
     </form>
-    <a href="{% url 'exports:xlsx' %}" class="p-1 text-sm" style="color: var(--muted);" title="Export to Excel" aria-label="Export to Excel">↓</a>
     <button id="theme-toggle" class="p-1 text-sm" style="color: var(--muted);" aria-label="Toggle theme" title="Toggle theme">
       <span class="theme-icon-dark">☾</span>
       <span class="theme-icon-light hidden">☀</span>
