@@ -1,10 +1,11 @@
 {% extends "base.html" %}
+{% load money %}
 {% block title %}Investments{% endblock %}
 {% block content %}
 <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
   <div>
     <h1 class="text-2xl font-bold">Investments</h1>
-    <div class="text-sm" style="color: var(--muted);">Total: <span class="num font-semibold" style="color: var(--accent-positive);">${{ grand_total|floatformat:2 }}</span></div>
+    <div class="text-sm" style="color: var(--muted);">Total: <span class="num font-semibold" style="color: var(--accent-positive);">{{ grand_total|money }}</span></div>
   </div>
   <div class="flex gap-2">
     <form method="post" action="{% url 'investments:refresh_prices' %}" class="m-0">

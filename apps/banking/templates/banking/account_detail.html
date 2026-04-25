@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 {% block title %}{{ account.effective_name }}{% endblock %}
 {% block content %}
 <a href="{% url 'banking:list' %}" class="text-sm" style="color: var(--muted);">← Banks</a>
@@ -23,7 +24,7 @@
   <div class="text-right">
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Balance</div>
     <div class="text-2xl font-bold num whitespace-nowrap" style="color: {% if account.balance < 0 %}var(--accent-negative){% else %}var(--accent-cash){% endif %};">
-      ${{ account.balance|floatformat:2 }} {{ account.currency }}
+      {{ account.balance|money }} {{ account.currency }}
     </div>
   </div>
 </div>
@@ -54,7 +55,7 @@
           <td class="px-4 py-2 text-xs truncate" style="color: var(--muted);">{{ tx.memo|default:"" }}</td>
           <td class="px-4 py-2 text-right num font-semibold"
               style="color: {% if tx.amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
-            {% if tx.amount >= 0 %}+{% endif %}${{ tx.amount|floatformat:2 }}
+            {{ tx.amount|money:"signed" }}
           </td>
         </tr>
         {% endfor %}
@@ -69,7 +70,7 @@
       <div class="flex items-baseline justify-between gap-3">
         <div class="font-medium truncate min-w-0">{{ tx.payee|default:tx.description }}</div>
         <div class="num font-semibold whitespace-nowrap" style="color: {% if tx.amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
-          {% if tx.amount >= 0 %}+{% endif %}${{ tx.amount|floatformat:2 }}
+          {{ tx.amount|money:"signed" }}
         </div>
       </div>
       <div class="text-xs mt-0.5" style="color: var(--muted);">

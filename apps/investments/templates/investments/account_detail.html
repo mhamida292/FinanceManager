@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 {% block title %}{{ account.effective_name }}{% endblock %}
 {% block content %}
 <a href="{% url 'investments:list' %}" class="text-sm" style="color: var(--muted);">← Investments</a>
@@ -19,10 +20,10 @@
   </div>
   <div class="text-right space-y-1">
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Market value</div>
-    <div class="text-2xl font-bold num" style="color: var(--accent-positive);">${{ total_value|floatformat:2 }}</div>
+    <div class="text-2xl font-bold num" style="color: var(--accent-positive);">{{ total_value|money }}</div>
     {% if total_gain is not None %}
       <div class="text-xs num" style="color: {% if total_gain < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
-        gain/loss: {% if total_gain >= 0 %}+{% endif %}${{ total_gain|floatformat:2 }}
+        gain/loss: {{ total_gain|money:"signed" }}
       </div>
     {% endif %}
   </div>
@@ -31,7 +32,7 @@
 <div class="rounded border p-4 mb-4 flex items-center justify-between" style="background: var(--surface); border-color: var(--border);">
   <div>
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Uninvested cash</div>
-    <div class="text-xl font-bold num" style="color: var(--accent-cash);">${{ account.cash_balance|floatformat:2 }}</div>
+    <div class="text-xl font-bold num" style="color: var(--accent-cash);">{{ account.cash_balance|money }}</div>
   </div>
   <a href="{% url 'investments:edit_account' account.id %}" class="text-sm" style="color: var(--muted);">✎ Edit</a>
 </div>
@@ -66,11 +67,11 @@
         <tr style="border-top: 1px solid var(--border);">
           <td class="px-4 py-2 num font-semibold">{{ h.symbol }}</td>
           <td class="px-4 py-2 text-right num">{{ h.shares }}</td>
-          <td class="px-4 py-2 text-right num">${{ h.current_price|floatformat:2 }}</td>
-          <td class="px-4 py-2 text-right num">${{ h.market_value|floatformat:2 }}</td>
+          <td class="px-4 py-2 text-right num">{{ h.current_price|money }}</td>
+          <td class="px-4 py-2 text-right num">{{ h.market_value|money }}</td>
           <td class="px-4 py-2 text-right num">
             {% if h.cost_basis is not None %}
-              ${{ h.cost_basis|floatformat:2 }}
+              {{ h.cost_basis|money }}
               {% if h.cost_basis_source == 'manual' %}<span class="text-xs" style="color: var(--accent-assets);" title="Locked from sync overwrite">✋</span>{% endif %}
             {% else %}
               <span style="color: var(--dim);">—</span>
@@ -79,7 +80,7 @@
           <td class="px-4 py-2 text-right num"
               style="color: {% if h.gain_loss and h.gain_loss < 0 %}var(--accent-negative){% elif h.gain_loss %}var(--accent-positive){% endif %};">
             {% if h.gain_loss is not None %}
-              {% if h.gain_loss >= 0 %}+{% endif %}${{ h.gain_loss|floatformat:2 }}
+              {{ h.gain_loss|money:"signed" }}
               <div class="text-xs" style="color: var(--muted);">{% if h.gain_loss_percent >= 0 %}+{% endif %}{{ h.gain_loss_percent|floatformat:2 }}%</div>
             {% else %}<span style="color: var(--dim);">—</span>{% endif %}
           </td>
@@ -99,15 +100,15 @@
     <div class="px-4 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
       <div class="flex items-baseline justify-between gap-3">
         <div class="num font-semibold truncate min-w-0">{{ h.symbol }}</div>
-        <div class="num font-semibold whitespace-nowrap" style="color: var(--accent-positive);">${{ h.market_value|floatformat:2 }}</div>
+        <div class="num font-semibold whitespace-nowrap" style="color: var(--accent-positive);">{{ h.market_value|money }}</div>
       </div>
       <div class="flex items-baseline justify-between gap-3 mt-1">
         <div class="text-xs num" style="color: var(--muted);">
-          <span class="num">{{ h.shares }}</span> sh @ <span class="num">${{ h.current_price|floatformat:2 }}</span>
+          <span class="num">{{ h.shares }}</span> sh @ <span class="num">{{ h.current_price|money }}</span>
         </div>
         {% if h.gain_loss is not None %}
         <div class="text-xs num whitespace-nowrap" style="color: {% if h.gain_loss < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
-          {% if h.gain_loss >= 0 %}+{% endif %}${{ h.gain_loss|floatformat:2 }}
+          {{ h.gain_loss|money:"signed" }}
           · {% if h.gain_loss_percent >= 0 %}+{% endif %}{{ h.gain_loss_percent|floatformat:2 }}%
         </div>
         {% endif %}

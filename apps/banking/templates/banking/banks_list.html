@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load money %}
 {% block title %}Banks{% endblock %}
 {% block content %}
 <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
@@ -28,7 +29,7 @@
           <div class="text-xs" style="color: var(--muted);">{{ account.org_name|default:"" }} · {{ account.get_type_display }}</div>
         </div>
         <div class="num font-semibold whitespace-nowrap" style="color: {% if account.balance < 0 %}var(--accent-negative){% else %}var(--accent-cash){% endif %};">
-          ${{ account.balance|floatformat:2 }} {{ account.currency }}
+          {{ account.balance|money }} {{ account.currency }}
         </div>
       </a>
       <a href="{% url 'banking:rename_account' account.id %}" class="text-sm ml-3" style="color: var(--dim);" title="Rename">✎</a>

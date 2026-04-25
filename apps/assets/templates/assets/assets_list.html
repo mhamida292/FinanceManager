@@ -1,10 +1,11 @@
 {% extends "base.html" %}
+{% load money %}
 {% block title %}Assets{% endblock %}
 {% block content %}
 <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
   <div>
     <h1 class="text-2xl font-bold">Assets</h1>
-    <div class="text-sm" style="color: var(--muted);">Total: <span class="num font-semibold" style="color: var(--accent-assets);">${{ total|floatformat:2 }}</span></div>
+    <div class="text-sm" style="color: var(--muted);">Total: <span class="num font-semibold" style="color: var(--accent-assets);">{{ total|money }}</span></div>
   </div>
   <div class="flex gap-2">
     <form method="post" action="{% url 'assets:refresh' %}" class="m-0">
@@ -53,7 +54,7 @@
           <td class="px-4 py-3 text-right num" style="color: var(--muted);">
             {% if a.kind == 'scraped' %}{{ a.quantity }} {{ a.unit }}{% else %}—{% endif %}
           </td>
-          <td class="px-4 py-3 text-right num font-semibold" style="color: var(--accent-assets);">${{ a.current_value|floatformat:2 }}</td>
+          <td class="px-4 py-3 text-right num font-semibold" style="color: var(--accent-assets);">{{ a.current_value|money }}</td>
           <td class="px-4 py-3 text-right text-xs num" style="color: var(--muted);">
             {% if a.last_priced_at %}{{ a.last_priced_at|date:"M j" }}{% else %}never{% endif %}
           </td>
@@ -78,7 +79,7 @@
           </div>
           {% if a.notes %}<div class="text-xs truncate" style="color: var(--muted);">{{ a.notes }}</div>{% endif %}
         </div>
-        <div class="num font-semibold whitespace-nowrap" style="color: var(--accent-assets);">${{ a.current_value|floatformat:2 }}</div>
+        <div class="num font-semibold whitespace-nowrap" style="color: var(--accent-assets);">{{ a.current_value|money }}</div>
       </div>
       <div class="flex items-center justify-between mt-1">
         <div class="text-xs num" style="color: var(--muted);">
