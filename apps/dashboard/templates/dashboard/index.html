@@ -6,7 +6,7 @@
 <div class="flex items-end justify-between mb-6 flex-wrap gap-4">
   <div>
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Net worth</div>
-    <div class="text-4xl font-bold num mt-1" style="color: {% if summary.net_worth < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+    <div class="text-3xl sm:text-4xl font-bold num mt-1 break-words" style="color: {% if summary.net_worth < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
       ${{ summary.net_worth|floatformat:2 }}
     </div>
   </div>
@@ -20,25 +20,25 @@
 
   <a href="{% url 'banking:list' %}" class="rounded p-4 border block hover:border-opacity-100 transition" style="background: var(--surface); border-color: var(--border);">
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Cash</div>
-    <div class="text-xl font-bold num mt-1" style="color: var(--accent-cash);">${{ summary.cash|floatformat:2 }}</div>
+    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-cash);">${{ summary.cash|floatformat:2 }}</div>
     <div class="text-[10px] mt-1" style="color: var(--dim);">{{ summary.cash_account_count }} account{{ summary.cash_account_count|pluralize }}</div>
   </a>
 
   <a href="{% url 'investments:list' %}" class="rounded p-4 border block hover:border-opacity-100 transition" style="background: var(--surface); border-color: var(--border);">
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Investments</div>
-    <div class="text-xl font-bold num mt-1" style="color: var(--accent-inv);">${{ summary.investments|floatformat:2 }}</div>
+    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-inv);">${{ summary.investments|floatformat:2 }}</div>
     <div class="text-[10px] mt-1" style="color: var(--dim);">{{ summary.investment_holding_count }} position{{ summary.investment_holding_count|pluralize }}</div>
   </a>
 
   <a href="{% url 'assets:list' %}" class="rounded p-4 border block hover:border-opacity-100 transition" style="background: var(--surface); border-color: var(--border);">
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Assets</div>
-    <div class="text-xl font-bold num mt-1" style="color: var(--accent-assets);">${{ summary.assets|floatformat:2 }}</div>
+    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-assets);">${{ summary.assets|floatformat:2 }}</div>
     <div class="text-[10px] mt-1" style="color: var(--dim);">{{ summary.asset_count }} item{{ summary.asset_count|pluralize }}</div>
   </a>
 
   <a href="{% url 'liabilities:list' %}" class="rounded p-4 border block hover:border-opacity-100 transition" style="background: var(--surface); border-color: var(--border);">
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Liabilities</div>
-    <div class="text-xl font-bold num mt-1" style="color: var(--accent-lia);">−${{ summary.liabilities|floatformat:2 }}</div>
+    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-lia);">−${{ summary.liabilities|floatformat:2 }}</div>
     <div class="text-[10px] mt-1" style="color: var(--dim);">credit + loans + manual</div>
   </a>
 
@@ -55,8 +55,8 @@
     No transactions yet. Link a bank in <a href="{% url 'settings' %}" class="underline" style="color: var(--accent-positive);">Settings</a>.
   </div>
 {% else %}
-  <div class="rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
-    <table class="w-full text-sm">
+  <div class="rounded border overflow-x-auto" style="background: var(--surface); border-color: var(--border);">
+    <table class="w-full text-sm min-w-[480px]">
       <thead style="border-bottom: 1px solid var(--border); color: var(--dim);">
         <tr class="text-[10px] uppercase tracking-widest">
           <th class="px-4 py-2 text-left w-20">Date</th>

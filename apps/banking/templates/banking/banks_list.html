@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Banks{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-6">
+<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
   <h1 class="text-2xl font-bold">Banks</h1>
-  <a href="{% url 'settings' %}" class="text-sm" style="color: var(--muted);">Manage in Settings →</a>
+  <a href="{% url 'settings' %}" class="text-sm whitespace-nowrap" style="color: var(--muted);">Manage in Settings →</a>
 </div>
 
 {% if messages %}
@@ -43,12 +43,12 @@
       <div>
         {% for account in inst.accounts.all %}
         <div class="flex items-center justify-between px-5 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
-          <a href="{% url 'banking:account_detail' account.id %}" class="flex-1 flex items-center justify-between min-w-0 pr-3">
+          <a href="{% url 'banking:account_detail' account.id %}" class="flex-1 flex items-center justify-between gap-3 min-w-0 pr-3 flex-wrap">
             <div class="min-w-0">
               <div class="font-medium truncate">{{ account.effective_name }}</div>
               <div class="text-xs" style="color: var(--muted);">{{ account.org_name|default:"" }} · {{ account.get_type_display }}</div>
             </div>
-            <div class="num font-semibold" style="color: {% if account.balance < 0 %}var(--accent-negative){% else %}var(--accent-cash){% endif %};">
+            <div class="num font-semibold whitespace-nowrap" style="color: {% if account.balance < 0 %}var(--accent-negative){% else %}var(--accent-cash){% endif %};">
               ${{ account.balance|floatformat:2 }} {{ account.currency }}
             </div>
           </a>
