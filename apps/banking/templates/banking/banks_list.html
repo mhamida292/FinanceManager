@@ -3,59 +3,60 @@
 {% block content %}
 <div class="flex items-center justify-between mb-6">
   <h1 class="text-2xl font-bold">Banks</h1>
-  <a href="{% url 'settings' %}" class="text-slate-500 hover:text-white text-sm">Manage in Settings →</a>
+  <a href="{% url 'settings' %}" class="text-sm" style="color: var(--muted);">Manage in Settings →</a>
 </div>
 
 {% if messages %}
   {% for message in messages %}
-  <div class="bg-{% if message.tags == 'error' %}red-900/40 border-red-700 text-red-200{% else %}emerald-900/40 border-emerald-700 text-emerald-200{% endif %} border p-3 rounded text-sm mb-4">
+  <div class="border p-3 rounded text-sm mb-4"
+       style="{% if message.tags == 'error' %}background: var(--tint-lia); border-color: var(--accent-lia); color: var(--accent-lia);{% else %}background: var(--tint-positive); border-color: var(--accent-positive); color: var(--accent-positive);{% endif %}">
     {{ message }}
   </div>
   {% endfor %}
 {% endif %}
 
 {% if not institutions %}
-  <div class="bg-slate-900 border border-slate-800 rounded p-6 text-slate-400">
-    No banks linked yet. Click <strong class="text-slate-200">Link account</strong> to connect a bank via SimpleFIN.
+  <div class="rounded border p-6 text-sm" style="background: var(--surface); border-color: var(--border); color: var(--muted);">
+    No banks linked yet. Click <strong style="color: var(--text);">Link account</strong> to connect a bank via SimpleFIN.
   </div>
 {% else %}
   <div class="space-y-4">
     {% for inst in institutions %}
-    <div class="bg-slate-900 border border-slate-800 rounded">
-      <div class="flex items-center justify-between px-5 py-3 border-b border-slate-800">
+    <div class="rounded border" style="background: var(--surface); border-color: var(--border);">
+      <div class="flex items-center justify-between px-5 py-3" style="border-bottom: 1px solid var(--border);">
         <div>
           <div class="font-semibold">{{ inst.effective_name }}</div>
-          <div class="text-xs text-slate-500">
+          <div class="text-xs" style="color: var(--muted);">
             {{ inst.get_provider_display }} ·
-            Last synced: {% if inst.last_synced_at %}{{ inst.last_synced_at|date:"M j, Y g:i a" }}{% else %}never{% endif %}
+            Last synced: {% if inst.last_synced_at %}<span class="num">{{ inst.last_synced_at|date:"M j, Y g:i a" }}</span>{% else %}never{% endif %}
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <a href="{% url 'banking:rename_institution' inst.id %}" class="text-slate-500 hover:text-white text-sm" title="Rename">✎</a>
+          <a href="{% url 'banking:rename_institution' inst.id %}" class="text-sm" style="color: var(--dim);" title="Rename">✎</a>
           <form method="post" action="{% url 'banking:sync' inst.id %}" class="m-0">
             {% csrf_token %}
-            <button type="submit" class="text-slate-400 hover:text-white text-sm">⟳ Sync</button>
+            <button type="submit" class="text-sm" style="color: var(--muted);">⟳ Sync</button>
           </form>
-          <a href="{% url 'banking:delete_institution' inst.id %}" class="text-slate-600 hover:text-red-400 text-sm" title="Delete">🗑</a>
+          <a href="{% url 'banking:delete_institution' inst.id %}" class="text-sm" style="color: var(--dim);" title="Delete">🗑</a>
         </div>
       </div>
-      <div class="divide-y divide-slate-800">
+      <div>
         {% for account in inst.accounts.all %}
-        <div class="flex items-center justify-between px-5 py-3 hover:bg-slate-800/40">
+        <div class="flex items-center justify-between px-5 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
           <a href="{% url 'banking:account_detail' account.id %}" class="flex-1 flex items-center justify-between min-w-0 pr-3">
             <div class="min-w-0">
               <div class="font-medium truncate">{{ account.effective_name }}</div>
-              <div class="text-xs text-slate-500">{{ account.org_name|default:"" }} · {{ account.get_type_display }}</div>
+              <div class="text-xs" style="color: var(--muted);">{{ account.org_name|default:"" }} · {{ account.get_type_display }}</div>
             </div>
-            <div class="font-mono {% if account.balance < 0 %}text-red-300{% else %}text-slate-100{% endif %}">
-              {{ account.balance }} {{ account.currency }}
+            <div class="num font-semibold" style="color: {% if account.balance < 0 %}var(--accent-negative){% else %}var(--accent-cash){% endif %};">
+              ${{ account.balance|floatformat:2 }} {{ account.currency }}
             </div>
           </a>
-          <a href="{% url 'banking:rename_account' account.id %}" class="text-slate-600 hover:text-white text-sm" title="Rename">✎</a>
-          <a href="{% url 'banking:delete_account' account.id %}" class="text-slate-600 hover:text-red-400 text-sm" title="Delete">🗑</a>
+          <a href="{% url 'banking:rename_account' account.id %}" class="text-sm ml-3" style="color: var(--dim);" title="Rename">✎</a>
+          <a href="{% url 'banking:delete_account' account.id %}" class="text-sm ml-2" style="color: var(--dim);" title="Delete">🗑</a>
         </div>
         {% empty %}
-        <div class="px-5 py-3 text-slate-500 text-sm">No accounts returned yet — try syncing.</div>
+        <div class="px-5 py-3 text-sm" style="color: var(--muted);">No accounts returned yet — try syncing.</div>
         {% endfor %}
       </div>
     </div>

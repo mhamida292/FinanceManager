@@ -3,33 +3,36 @@
 {% block content %}
 <div class="max-w-xl mx-auto">
   <h1 class="text-2xl font-bold mb-4">Add a manual brokerage account</h1>
-  <p class="text-slate-400 text-sm mb-6">Use this for brokerages SimpleFIN can't connect to (Fidelity, 401k plans, etc.). You'll add positions next.</p>
+  <p class="text-sm mb-6" style="color: var(--muted);">Use this for brokerages SimpleFIN can't connect to (Fidelity, 401k plans, etc.). You'll add positions next.</p>
 
   {% if messages %}
     {% for message in messages %}
-    <div class="bg-red-900/40 border-red-700 text-red-200 border p-3 rounded text-sm mb-4">{{ message }}</div>
+    <div class="border p-3 rounded text-sm mb-4" style="background: var(--tint-lia); border-color: var(--accent-lia); color: var(--accent-lia);">{{ message }}</div>
     {% endfor %}
   {% endif %}
 
   <form method="post" class="space-y-4">
     {% csrf_token %}
     <div>
-      <label class="block text-sm text-slate-400 mb-1">Broker</label>
+      <label class="block text-sm mb-1" style="color: var(--muted);">Broker</label>
       <input name="broker" type="text" value="{{ broker|default:'' }}" placeholder="e.g., Fidelity"
-             class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2">
+             class="w-full rounded px-3 py-2"
+             style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
     </div>
     <div>
-      <label class="block text-sm text-slate-400 mb-1">Account name *</label>
+      <label class="block text-sm mb-1" style="color: var(--muted);">Account name *</label>
       <input name="name" type="text" value="{{ name|default:'' }}" required placeholder="e.g., 401k, Roth IRA"
-             class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2">
+             class="w-full rounded px-3 py-2"
+             style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
     </div>
     <div>
-      <label class="block text-sm text-slate-400 mb-1">Notes</label>
-      <textarea name="notes" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2">{{ notes|default:'' }}</textarea>
+      <label class="block text-sm mb-1" style="color: var(--muted);">Notes</label>
+      <textarea name="notes" rows="3" class="w-full rounded px-3 py-2"
+                style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">{{ notes|default:'' }}</textarea>
     </div>
     <div class="flex items-center gap-3">
-      <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2 rounded">Create</button>
-      <a href="{% url 'investments:list' %}" class="text-slate-400 hover:text-white text-sm">Cancel</a>
+      <button type="submit" class="font-bold px-5 py-2 rounded" style="background: var(--accent-positive); color: var(--bg);">Create</button>
+      <a href="{% url 'investments:list' %}" class="text-sm" style="color: var(--muted);">Cancel</a>
     </div>
   </form>
 </div>

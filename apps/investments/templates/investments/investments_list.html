@@ -1,50 +1,49 @@
 {% extends "base.html" %}
 {% block title %}Investments{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-6">
+<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
   <div>
     <h1 class="text-2xl font-bold">Investments</h1>
-    <div class="text-slate-500 text-sm">Total: <span class="font-mono text-emerald-200">${{ grand_total|floatformat:2 }}</span></div>
+    <div class="text-sm" style="color: var(--muted);">Total: <span class="num font-semibold" style="color: var(--accent-positive);">${{ grand_total|floatformat:2 }}</span></div>
   </div>
   <div class="flex gap-2">
     <form method="post" action="{% url 'investments:refresh_prices' %}" class="m-0">
       {% csrf_token %}
-      <button type="submit" class="text-slate-400 hover:text-white text-sm border border-slate-700 px-3 py-2 rounded">⟳ Refresh prices</button>
+      <button type="submit" class="text-sm border px-3 py-2 rounded" style="border-color: var(--border); color: var(--muted);">⟳ Refresh prices</button>
     </form>
-    <a href="{% url 'investments:add_account' %}" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded">+ Manual account</a>
+    <a href="{% url 'investments:add_account' %}" class="font-bold px-4 py-2 rounded" style="background: var(--accent-positive); color: var(--bg);">+ Manual account</a>
   </div>
 </div>
 
 {% if messages %}
   {% for message in messages %}
-  <div class="bg-{% if message.tags == 'error' %}red-900/40 border-red-700 text-red-200{% else %}emerald-900/40 border-emerald-700 text-emerald-200{% endif %} border p-3 rounded text-sm mb-4">
+  <div class="border p-3 rounded text-sm mb-4"
+       style="{% if message.tags == 'error' %}background: var(--tint-lia); border-color: var(--accent-lia); color: var(--accent-lia);{% elif message.tags == 'warning' %}background: var(--tint-assets); border-color: var(--accent-assets); color: var(--accent-assets);{% else %}background: var(--tint-positive); border-color: var(--accent-positive); color: var(--accent-positive);{% endif %}">
     {{ message }}
   </div>
   {% endfor %}
 {% endif %}
 
 {% if not accounts %}
-  <div class="bg-slate-900 border border-slate-800 rounded p-6 text-slate-400">
-    No investment accounts yet. Click <strong class="text-slate-200">+ Manual account</strong> to type in a brokerage that SimpleFIN doesn't reach, or sync an existing linked bank.
+  <div class="rounded border p-6 text-sm" style="background: var(--surface); border-color: var(--border); color: var(--muted);">
+    No investment accounts yet. Click <strong style="color: var(--text);">+ Manual account</strong> to type in a brokerage that SimpleFIN doesn't reach, or sync an existing linked bank.
   </div>
 {% else %}
-  <div class="space-y-4">
+  <div class="rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
     {% for acc in accounts %}
-    <div class="bg-slate-900 border border-slate-800 hover:bg-slate-800/40 rounded">
-      <div class="flex items-center justify-between px-5 py-3">
-        <a href="{% url 'investments:account_detail' acc.id %}" class="flex-1 flex items-center justify-between min-w-0 pr-3">
-          <div>
-            <div class="font-semibold">{{ acc.effective_name }}</div>
-            <div class="text-xs text-slate-500">{{ acc.broker|default:"" }} · {{ acc.get_source_display }}</div>
-          </div>
-          <div class="text-right">
-            {% with total=acc.holdings.all|length %}
-            <div class="text-xs text-slate-500">{{ total }} position{{ total|pluralize }}</div>
-            {% endwith %}
-          </div>
-        </a>
-        <a href="{% url 'investments:delete_account' acc.id %}" class="text-slate-600 hover:text-red-400 text-sm ml-3" title="Delete">🗑</a>
-      </div>
+    <div class="flex items-center justify-between px-5 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
+      <a href="{% url 'investments:account_detail' acc.id %}" class="flex-1 flex items-center justify-between min-w-0 pr-3">
+        <div class="min-w-0">
+          <div class="font-semibold truncate">{{ acc.effective_name }}</div>
+          <div class="text-xs" style="color: var(--muted);">{{ acc.broker|default:"" }} · {{ acc.get_source_display }}</div>
+        </div>
+        <div class="text-right">
+          {% with total=acc.holdings.all|length %}
+          <div class="text-xs" style="color: var(--muted);"><span class="num">{{ total }}</span> position{{ total|pluralize }}</div>
+          {% endwith %}
+        </div>
+      </a>
+      <a href="{% url 'investments:delete_account' acc.id %}" class="text-sm ml-3" style="color: var(--dim);" title="Delete">🗑</a>
     </div>
     {% endfor %}
   </div>

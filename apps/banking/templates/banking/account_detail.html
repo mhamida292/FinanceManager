@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 {% block title %}{{ account.effective_name }}{% endblock %}
 {% block content %}
-<a href="{% url 'banking:list' %}" class="text-slate-500 hover:text-white text-sm">← Banks</a>
+<a href="{% url 'banking:list' %}" class="text-sm" style="color: var(--muted);">← Banks</a>
 
 {% if messages %}
   {% for message in messages %}
-  <div class="bg-{% if message.tags == 'error' %}red-900/40 border-red-700 text-red-200{% else %}emerald-900/40 border-emerald-700 text-emerald-200{% endif %} border p-3 rounded text-sm mt-3">
+  <div class="border p-3 rounded text-sm mt-3"
+       style="{% if message.tags == 'error' %}background: var(--tint-lia); border-color: var(--accent-lia); color: var(--accent-lia);{% else %}background: var(--tint-positive); border-color: var(--accent-positive); color: var(--accent-positive);{% endif %}">
     {{ message }}
   </div>
   {% endfor %}
@@ -15,39 +16,50 @@
   <div>
     <div class="flex items-center gap-2">
       <h1 class="text-2xl font-bold">{{ account.effective_name }}</h1>
-      <a href="{% url 'banking:rename_account' account.id %}" class="text-slate-600 hover:text-white text-sm" title="Rename">✎</a>
+      <a href="{% url 'banking:rename_account' account.id %}" class="text-sm" style="color: var(--dim);" title="Rename">✎</a>
     </div>
-    <div class="text-slate-500 text-sm">{{ account.org_name }} · {{ account.get_type_display }}</div>
+    <div class="text-sm" style="color: var(--muted);">{{ account.org_name }} · {{ account.get_type_display }}</div>
   </div>
   <div class="text-right">
-    <div class="text-xs text-slate-500 uppercase tracking-wider">Balance</div>
-    <div class="text-2xl font-mono {% if account.balance < 0 %}text-red-300{% else %}text-emerald-200{% endif %}">
-      {{ account.balance }} {{ account.currency }}
+    <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Balance</div>
+    <div class="text-2xl font-bold num" style="color: {% if account.balance < 0 %}var(--accent-negative){% else %}var(--accent-cash){% endif %};">
+      ${{ account.balance|floatformat:2 }} {{ account.currency }}
     </div>
   </div>
 </div>
 
 {% if not transactions %}
-  <div class="bg-slate-900 border border-slate-800 rounded p-6 text-slate-400 text-sm">
+  <div class="rounded border p-6 text-sm" style="background: var(--surface); border-color: var(--border); color: var(--muted);">
     No transactions yet.
   </div>
 {% else %}
-  <div class="bg-slate-900 border border-slate-800 rounded divide-y divide-slate-800">
-    {% for tx in transactions %}
-    <div class="flex items-start justify-between px-5 py-3">
-      <div class="min-w-0 pr-4">
-        <div class="font-medium truncate">{{ tx.payee|default:tx.description }}</div>
-        <div class="text-xs text-slate-500">
-          {{ tx.posted_at|date:"M j, Y" }}{% if tx.pending %} · <span class="text-amber-400">pending</span>{% endif %}
-          {% if tx.memo %} · {{ tx.memo }}{% endif %}
-        </div>
-      </div>
-      <div class="font-mono {% if tx.amount < 0 %}text-red-300{% else %}text-emerald-200{% endif %}">
-        {{ tx.amount }}
-      </div>
-    </div>
-    {% endfor %}
+  <div class="rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+    <table class="w-full text-sm">
+      <thead style="border-bottom: 1px solid var(--border);">
+        <tr class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">
+          <th class="px-4 py-2 text-left w-28">Date</th>
+          <th class="px-4 py-2 text-left">Payee</th>
+          <th class="px-4 py-2 text-left">Memo</th>
+          <th class="px-4 py-2 text-right w-32">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in transactions %}
+        <tr style="border-top: 1px solid var(--border);">
+          <td class="px-4 py-2 num text-xs" style="color: var(--muted);">
+            {{ tx.posted_at|date:"M j, Y" }}{% if tx.pending %} <span style="color: var(--accent-assets);">·pending</span>{% endif %}
+          </td>
+          <td class="px-4 py-2 truncate">{{ tx.payee|default:tx.description }}</td>
+          <td class="px-4 py-2 text-xs truncate" style="color: var(--muted);">{{ tx.memo|default:"" }}</td>
+          <td class="px-4 py-2 text-right num font-semibold"
+              style="color: {% if tx.amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+            {% if tx.amount >= 0 %}+{% endif %}${{ tx.amount|floatformat:2 }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-  <p class="text-xs text-slate-500 mt-3">Showing latest 500 transactions. Full history / pagination later.</p>
+  <p class="text-xs mt-3" style="color: var(--muted);">Showing latest 500 transactions. Full history / pagination later.</p>
 {% endif %}
 {% endblock %}

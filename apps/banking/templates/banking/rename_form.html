@@ -3,27 +3,29 @@
 {% block content %}
 <div class="max-w-xl mx-auto">
   <h1 class="text-2xl font-bold mb-2">Rename this {{ subject }}</h1>
-  <p class="text-slate-500 text-sm mb-6">
-    Provider name: <code class="text-slate-300">{{ fallback_value }}</code>.
+  <p class="text-sm mb-6" style="color: var(--muted);">
+    Provider name: <code style="color: var(--text);">{{ fallback_value }}</code>.
     Leave the field blank to restore the provider name.
   </p>
 
   <form method="post" class="space-y-4">
     {% csrf_token %}
     <div>
-      <label class="block text-sm text-slate-400 mb-1" for="id_display_name">Display name</label>
+      <label class="block text-sm mb-1" style="color: var(--muted);" for="id_display_name">Display name</label>
       <input id="id_display_name" name="display_name" type="text"
              value="{{ current_value }}"
              autofocus
              maxlength="200"
              placeholder="e.g., Joint Checking"
-             class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2">
+             class="w-full rounded px-3 py-2"
+             style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
     </div>
     <div class="flex items-center gap-3">
-      <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2 rounded">
+      <button type="submit" class="font-bold px-5 py-2 rounded"
+              style="background: var(--accent-positive); color: var(--bg);">
         Save
       </button>
-      <a href="{{ cancel_url }}" class="text-slate-400 hover:text-white text-sm">Cancel</a>
+      <a href="{{ cancel_url }}" class="text-sm" style="color: var(--muted);">Cancel</a>
     </div>
   </form>
 </div>

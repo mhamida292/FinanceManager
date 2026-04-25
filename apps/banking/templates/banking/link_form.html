@@ -3,15 +3,16 @@
 {% block content %}
 <div class="max-w-xl mx-auto">
   <h1 class="text-2xl font-bold mb-4">Link a bank via SimpleFIN</h1>
-  <ol class="text-slate-400 text-sm list-decimal list-inside space-y-1 mb-6">
-    <li>Open <a href="https://beta-bridge.simplefin.org/" class="text-emerald-400 underline" target="_blank" rel="noopener">beta-bridge.simplefin.org</a>, sign in, connect your bank(s).</li>
-    <li>Create a new <strong>Setup Token</strong>.</li>
+  <ol class="text-sm list-decimal list-inside space-y-1 mb-6" style="color: var(--muted);">
+    <li>Open <a href="https://beta-bridge.simplefin.org/" class="underline" style="color: var(--accent-positive);" target="_blank" rel="noopener">beta-bridge.simplefin.org</a>, sign in, connect your bank(s).</li>
+    <li>Create a new <strong style="color: var(--text);">Setup Token</strong>.</li>
     <li>Paste it below. This app will exchange it for a long-lived access URL (encrypted at rest).</li>
   </ol>
 
   {% if messages %}
     {% for message in messages %}
-    <div class="bg-{% if message.tags == 'error' %}red-900/40 border-red-700 text-red-200{% else %}emerald-900/40 border-emerald-700 text-emerald-200{% endif %} border p-3 rounded text-sm mb-4">
+    <div class="border p-3 rounded text-sm mb-4"
+         style="{% if message.tags == 'error' %}background: var(--tint-lia); border-color: var(--accent-lia); color: var(--accent-lia);{% else %}background: var(--tint-positive); border-color: var(--accent-positive); color: var(--accent-positive);{% endif %}">
       {{ message }}
     </div>
     {% endfor %}
@@ -20,22 +21,25 @@
   <form method="post" class="space-y-4">
     {% csrf_token %}
     <div>
-      <label class="block text-sm text-slate-400 mb-1" for="id_display_name">Display name</label>
+      <label class="block text-sm mb-1" style="color: var(--muted);" for="id_display_name">Display name</label>
       <input id="id_display_name" name="display_name" type="text" value="{{ display_name|default:'' }}"
              placeholder="e.g., SimpleFIN · Main banks"
-             class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2">
+             class="w-full rounded px-3 py-2"
+             style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
     </div>
     <div>
-      <label class="block text-sm text-slate-400 mb-1" for="id_setup_token">Setup token</label>
+      <label class="block text-sm mb-1" style="color: var(--muted);" for="id_setup_token">Setup token</label>
       <textarea id="id_setup_token" name="setup_token" rows="4" required
-                class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 font-mono text-xs"
+                class="w-full rounded px-3 py-2 num text-xs"
+                style="background: var(--surface); border: 1px solid var(--border); color: var(--text);"
                 placeholder="base64 blob from SimpleFIN Bridge"></textarea>
     </div>
     <div class="flex items-center gap-3">
-      <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2 rounded">
+      <button type="submit" class="font-bold px-5 py-2 rounded"
+              style="background: var(--accent-positive); color: var(--bg);">
         Link
       </button>
-      <a href="{% url 'banking:list' %}" class="text-slate-400 hover:text-white text-sm">Cancel</a>
+      <a href="{% url 'banking:list' %}" class="text-sm" style="color: var(--muted);">Cancel</a>
     </div>
   </form>
 </div>

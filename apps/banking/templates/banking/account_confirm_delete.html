@@ -3,14 +3,14 @@
 {% block content %}
 <div class="max-w-md mx-auto mt-10">
   <h1 class="text-2xl font-bold mb-4">Delete "{{ account.effective_name }}"?</h1>
-  <p class="text-slate-400 text-sm mb-6">
-    Removes this account and {{ account.transactions.count }} transaction(s). The parent institution stays.
+  <p class="text-sm mb-6" style="color: var(--muted);">
+    Removes this account and <span class="num">{{ account.transactions.count }}</span> transaction(s). The parent institution stays.
     Subsequent syncs will re-create this account if SimpleFIN still returns it.
   </p>
   <form method="post" class="flex items-center gap-3">
     {% csrf_token %}
     <button type="submit" class="bg-red-600 hover:bg-red-500 text-white font-bold px-5 py-2 rounded">Delete</button>
-    <a href="{% url 'banking:list' %}" class="text-slate-400 hover:text-white text-sm">Cancel</a>
+    <a href="{% url 'banking:list' %}" class="text-sm" style="color: var(--muted);">Cancel</a>
   </form>
 </div>
 {% endblock %}
