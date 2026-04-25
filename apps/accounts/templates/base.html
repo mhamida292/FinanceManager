@@ -126,6 +126,47 @@
       syncIcons();
     });
   })();
+
+  // Mobile sidebar swipe gestures: edge-swipe right to open, swipe left to close
+  (function() {
+    var sidebar = document.getElementById('sidebar');
+    var scrim = document.getElementById('sidebar-scrim');
+    if (!sidebar || !scrim) return;
+
+    var EDGE_PX = 24;       // touch must start within this many px of left edge to open
+    var THRESHOLD_PX = 60;  // minimum horizontal travel to count as a swipe
+    var startX = 0, startY = 0, startedAtEdge = false;
+
+    function isMobile() {
+      return window.matchMedia('(max-width: 767px)').matches;
+    }
+
+    document.addEventListener('touchstart', function(e) {
+      if (!isMobile()) return;
+      var t = e.touches[0];
+      startX = t.clientX;
+      startY = t.clientY;
+      startedAtEdge = startX <= EDGE_PX;
+    }, { passive: true });
+
+    document.addEventListener('touchend', function(e) {
+      if (!isMobile()) return;
+      var t = e.changedTouches[0];
+      var dx = t.clientX - startX;
+      var dy = t.clientY - startY;
+      if (Math.abs(dx) < THRESHOLD_PX) return;       // not enough horizontal travel
+      if (Math.abs(dy) > Math.abs(dx)) return;       // it was a vertical scroll, not a swipe
+
+      var isOpen = sidebar.classList.contains('open');
+      if (dx > 0 && startedAtEdge && !isOpen) {
+        sidebar.classList.add('open');
+        scrim.classList.add('open');
+      } else if (dx < 0 && isOpen) {
+        sidebar.classList.remove('open');
+        scrim.classList.remove('open');
+      }
+    }, { passive: true });
+  })();
 </script>
 
 </body>
