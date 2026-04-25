@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Sign in{% endblock %}
 {% block anonymous_content %}
 <div class="min-h-screen flex items-center justify-center p-6">
   <div class="w-full max-w-sm">
     <div class="text-center mb-8">
-      <div class="font-bold tracking-widest text-2xl" style="color: var(--accent-positive);">○ FINANCE</div>
-      <div class="text-sm mt-2" style="color: var(--muted);">momajlab</div>
+      <img src="{% static 'logo-lockup.svg' %}" alt="Finance" class="h-9 mx-auto">
+      <div class="text-sm mt-3" style="color: var(--muted);">momajlab</div>
     </div>
     <form method="post" class="space-y-4 p-6 rounded-lg border" style="background: var(--surface); border-color: var(--border);">
       {% csrf_token %}

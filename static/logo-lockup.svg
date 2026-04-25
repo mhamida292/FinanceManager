@@ -1,0 +1,8 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 32" width="180" height="32">
+  <g>
+    <path d="M3.5 22 L11 14.5 L15 18.5 L24 9.5" stroke="#15803d" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+    <circle cx="24" cy="9.5" r="1.9" fill="#15803d"></circle>
+  </g>
+  <text x="36" y="22" font-family="Inter, system-ui, sans-serif" font-weight="700" font-size="14" letter-spacing="2.4" fill="#15803d">FINANCE</text>
+</svg>
