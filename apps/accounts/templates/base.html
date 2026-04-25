@@ -5,28 +5,121 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}Finance{% endblock %} · momajlab</title>
+
+  {# Set theme BEFORE paint to avoid flash. Reads localStorage, falls back to OS pref. #}
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('theme');
+        if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+      } catch (e) {}
+    })();
+  </script>
+
+  {# PWA + favicons #}
+  <link rel="icon" href="{% static 'favicon.ico' %}">
+  <link rel="apple-touch-icon" href="{% static 'apple-touch-icon.png' %}">
+  <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+  <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+
+  {# Self-hosted fonts — preload the variable woff2 for fast first paint #}
+  <link rel="preload" href="{% static 'fonts/Inter-Variable.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{% static 'fonts/JetBrainsMono-Variable.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
-  {% if user.is_authenticated %}
-  <nav class="border-b border-slate-800 px-6 py-3 flex items-center justify-between">
-    <div class="flex gap-6 items-center">
-      <a href="/" class="font-bold text-emerald-400">finance.momajlab</a>
-      <a href="/" class="text-slate-300 hover:text-white">Dashboard</a>
-      <a href="{% url 'banking:list' %}" class="text-slate-300 hover:text-white">Banks</a>
-      <a href="{% url 'investments:list' %}" class="text-slate-300 hover:text-white">Investments</a>
-      <a href="{% url 'assets:list' %}" class="text-slate-300 hover:text-white">Assets</a>
-      <a href="{% url 'liabilities:list' %}" class="text-slate-300 hover:text-white">Liabilities</a>
-      <a href="{% url 'settings' %}" class="text-slate-300 hover:text-white">Settings</a>
+<body class="min-h-screen" style="background: var(--bg); color: var(--text);">
+
+{% if user.is_authenticated %}
+{# ============ TOP BAR ============ #}
+<header class="sticky top-0 z-30 flex items-center justify-between px-4 md:px-6 h-[52px] border-b" style="background: var(--surface); border-color: var(--border);">
+  <div class="flex items-center gap-3">
+    <button id="hamburger" class="md:hidden p-1" style="color: var(--muted);" aria-label="Open menu" onclick="document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebar-scrim').classList.toggle('open');">
+      ☰
+    </button>
+    <div class="flex items-center gap-2">
+      {# Logo placeholder — replace with <img src="{% static 'logo.svg' %}"> once the asset arrives #}
+      <span class="font-bold tracking-widest" style="color: var(--accent-positive); font-size: 13px;">○ FINANCE</span>
     </div>
+  </div>
+  <div class="flex items-center gap-3">
+    <button id="theme-toggle" class="p-1 text-sm" style="color: var(--muted);" aria-label="Toggle theme" title="Toggle theme">
+      <span class="theme-icon-dark">☾</span>
+      <span class="theme-icon-light hidden">☀</span>
+    </button>
     <form action="{% url 'logout' %}" method="post" class="m-0">
       {% csrf_token %}
-      <button type="submit" class="text-slate-400 hover:text-white">{{ user.username }} · log out</button>
+      <button type="submit" class="text-sm" style="color: var(--muted);">{{ user.username }} ▾</button>
+    </form>
+  </div>
+</header>
+
+<div id="sidebar-scrim" onclick="document.getElementById('sidebar').classList.remove('open'); this.classList.remove('open');"></div>
+
+{# ============ LAYOUT ============ #}
+<div class="flex">
+
+  {# ============ SIDEBAR ============ #}
+  <nav id="sidebar" class="md:sticky md:top-[52px] md:h-[calc(100vh-52px)] w-[180px] flex-shrink-0 border-r p-4 overflow-y-auto" style="background: var(--surface); border-color: var(--border);">
+    <div class="text-[10px] font-semibold tracking-widest mb-2" style="color: var(--dim);">VIEW</div>
+    {% with active=request.resolver_match.namespace|default:request.resolver_match.url_name %}
+      <a href="{% url 'home' %}" class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5 {% if request.path == '/' %}nav-active-default{% endif %}" style="{% if request.path != '/' %}color: var(--muted);{% endif %}">Dashboard</a>
+      <a href="{% url 'banking:list' %}" class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5 {% if active == 'banking' %}nav-active-cash{% endif %}" style="{% if active != 'banking' %}color: var(--muted);{% endif %}">Banks</a>
+      <a href="{% url 'investments:list' %}" class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5 {% if active == 'investments' %}nav-active-inv{% endif %}" style="{% if active != 'investments' %}color: var(--muted);{% endif %}">Investments</a>
+      <a href="{% url 'assets:list' %}" class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5 {% if active == 'assets' %}nav-active-assets{% endif %}" style="{% if active != 'assets' %}color: var(--muted);{% endif %}">Assets</a>
+      <a href="{% url 'liabilities:list' %}" class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5 {% if active == 'liabilities' %}nav-active-lia{% endif %}" style="{% if active != 'liabilities' %}color: var(--muted);{% endif %}">Liabilities</a>
+    {% endwith %}
+
+    <div class="text-[10px] font-semibold tracking-widest mt-6 mb-2" style="color: var(--dim);">ACCOUNT</div>
+    <a href="{% url 'settings' %}" class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5 {% if request.resolver_match.url_name == 'settings' %}nav-active-default{% endif %}" style="{% if request.resolver_match.url_name != 'settings' %}color: var(--muted);{% endif %}">Settings</a>
+    <form action="{% url 'logout' %}" method="post" class="m-0">
+      {% csrf_token %}
+      <button type="submit" class="w-full text-left px-2 py-1.5 rounded text-sm" style="color: var(--muted);">Sign out</button>
     </form>
   </nav>
-  {% endif %}
-  <main class="max-w-6xl mx-auto p-6">
+
+  {# ============ MAIN ============ #}
+  <main class="flex-1 max-w-[1280px] mx-auto p-4 md:p-6">
     {% block content %}{% endblock %}
   </main>
+
+</div>
+
+{% else %}
+{# Logged out — render the page bare (login.html provides its own centered layout) #}
+{% block anonymous_content %}{% endblock %}
+{% endif %}
+
+<script>
+  // Theme toggle
+  (function() {
+    var btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    var dark = document.querySelectorAll('.theme-icon-dark');
+    var light = document.querySelectorAll('.theme-icon-light');
+    function syncIcons() {
+      var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      dark.forEach(function(el){ el.classList.toggle('hidden', !isLight); });
+      light.forEach(function(el){ el.classList.toggle('hidden', isLight); });
+    }
+    syncIcons();
+    btn.addEventListener('click', function() {
+      var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      if (isLight) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('theme', 'light');
+      }
+      syncIcons();
+    });
+  })();
+</script>
+
 </body>
 </html>
