@@ -1,11 +1,13 @@
-# Personal Finance Dashboard
+# FinLab
 
-Self-hosted finance dashboard for momajlab. Django + HTMX. Reachable on the tailnet; public hostname fronted by the homelab's existing nginx.
+Self-hosted personal finance dashboard. Multi-tenant, SimpleFIN-aggregated, runs on Docker. Tracks bank accounts, transactions, investments (SimpleFIN + manual), scraped/manual assets, and manual liabilities.
+
+Built with Django 5.1, Postgres 16, openpyxl. Light/dark theme, mobile responsive (PWA-installable), CSS off-canvas drawer with finger-tracked swipe gestures, XLSX export.
 
 ## First-time setup
 
 ```bash
-git clone https://github.com/mhamida292/FinanceManager.git finance && cd finance
+git clone <repo-url> finlab && cd finlab
 
 cp .env.example .env
 # Edit .env:
@@ -18,22 +20,21 @@ cp .env.example .env
 docker compose build
 docker compose up -d
 docker compose exec web python manage.py migrate
-docker compose exec web python manage.py createsuperuser   # mohamed
-docker compose exec web python manage.py createsuperuser   # dad
+docker compose exec web python manage.py createsuperuser
 ```
 
-Visit `http://<host-or-tailnet-ip>:<WEB_PORT>` from any device on the tailnet.
+Visit `http://<host>:<WEB_PORT>` and sign in. Additional users can self-register at `/signup/`.
 
-## Putting nginx in front (when ready for `finance.momajlab.com`)
+## Reverse proxy (HTTPS)
 
-Add an `nginx` server block on the host:
+Front the container with nginx (or NPM, Caddy, etc.) on the host. Example nginx block:
 
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name finance.momajlab.com;
+    server_name your-domain.example.com;
 
-    # your existing TLS cert lines
+    # your TLS cert lines
 
     location / {
         proxy_pass         http://127.0.0.1:<WEB_PORT>;
@@ -45,7 +46,12 @@ server {
 }
 ```
 
-Then in `.env`, flip `DJANGO_DEBUG=false`, set `DJANGO_ALLOWED_HOSTS=finance.momajlab.com`, and `DJANGO_CSRF_TRUSTED_ORIGINS=https://finance.momajlab.com`. Restart web: `docker compose up -d web`.
+Then in `.env` set:
+- `DJANGO_DEBUG=false`
+- `DJANGO_ALLOWED_HOSTS=your-domain.example.com`
+- `DJANGO_CSRF_TRUSTED_ORIGINS=https://your-domain.example.com`
+
+Restart: `docker compose up -d web`.
 
 ## Tests
 
@@ -53,37 +59,33 @@ Then in `.env`, flip `DJANGO_DEBUG=false`, set `DJANGO_ALLOWED_HOSTS=finance.mom
 docker compose exec web pytest -v
 ```
 
-## Daily auto-refresh (set up once)
+## Daily auto-refresh
 
-Add a crontab entry on the homelab host (not inside the container):
-
-```bash
-crontab -e
-```
+Add a host crontab entry (not inside the container):
 
 ```cron
-# Sync every linked SimpleFIN institution + refresh manual investment prices + scrape asset prices
-0 3 * * * cd /opt/finance && /usr/bin/docker compose exec -T web python manage.py sync_all >> /var/log/finance-sync.log 2>&1
+# Sync linked SimpleFIN institutions + refresh manual investment prices + scrape asset prices
+0 3 * * * cd /opt/finlab && /usr/bin/docker compose exec -T web python manage.py sync_all >> /var/log/finlab-sync.log 2>&1
 
-# Backup Postgres every night at 2am, keep 30 days
-0 2 * * * cd /opt/finance && /usr/bin/docker compose exec -T web python manage.py dump_backup >> /var/log/finance-backup.log 2>&1
+# Backup Postgres nightly, keep 30 days
+0 2 * * * cd /opt/finlab && /usr/bin/docker compose exec -T web python manage.py dump_backup >> /var/log/finlab-backup.log 2>&1
 ```
 
-(Adjust `/opt/finance` to match your install path.)
+Backups land in `./backups/finance-YYYY-MM-DD-HHMM.sql.gz` (bind-mounted from host). Files older than 30 days are pruned automatically. Off-site copies are your responsibility — `rsync -a ./backups/ user@nas:/backups/finlab/` works fine in another cron entry.
 
-Backups land in `./backups/finance-YYYY-MM-DD-HHMM.sql.gz` (bind-mounted from the host). Files older than 30 days are pruned automatically. Off-site copies are your responsibility — `rsync -a ./backups/ user@nas:/backups/finance/` works fine in another cron entry.
-
-## Restoring from backup
+## Restore from backup
 
 ```bash
-gunzip -c backups/finance-2026-04-24-0200.sql.gz | docker compose exec -T db psql -U finance -d finance
+gunzip -c backups/finance-YYYY-MM-DD-HHMM.sql.gz | docker compose exec -T db psql -U finance -d finance
 ```
 
-## Plans / specs
+## Demo data
 
-- Spec: `docs/superpowers/specs/2026-04-24-personal-finance-dash-design.md`
-- Phase 1 (foundation): `docs/superpowers/plans/2026-04-24-personal-finance-dash-phase-1-foundation.md`
-- Phase 2 (banking): `docs/superpowers/plans/2026-04-24-personal-finance-dash-phase-2-banking.md`
-- Phase 3 (investments): `docs/superpowers/plans/2026-04-24-personal-finance-dash-phase-3-investments.md`
-- Phase 4 (assets): `docs/superpowers/plans/2026-04-24-personal-finance-dash-phase-4-assets.md`
-- Phase 5 (dashboard / scheduling): `docs/superpowers/plans/2026-04-24-personal-finance-dash-phase-5-dashboard.md`
+Seed a user account with realistic-looking fake data (~6 months of bank transactions, investment holdings, assets, liabilities):
+
+```bash
+docker compose exec web python manage.py seed_demo --user <username>
+docker compose exec web python manage.py seed_demo --user <username> --clear  # wipe and reseed
+```
+
+`--clear` only removes seed-tagged rows (`external_id` starts `demo-` or `name` starts `Demo `); real SimpleFIN data on the same account is left alone.
