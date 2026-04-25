@@ -3,13 +3,13 @@
 {% block content %}
 <div class="max-w-md mx-auto mt-10">
   <h1 class="text-2xl font-bold mb-4">Delete "{{ asset.name }}"?</h1>
-  <p class="text-slate-400 text-sm mb-6">
+  <p class="text-sm mb-6" style="color: var(--muted);">
     This also removes its price history. This can't be undone.
   </p>
   <form method="post" class="flex items-center gap-3">
     {% csrf_token %}
     <button type="submit" class="bg-red-600 hover:bg-red-500 text-white font-bold px-5 py-2 rounded">Delete</button>
-    <a href="{% url 'assets:list' %}" class="text-slate-400 hover:text-white text-sm">Cancel</a>
+    <a href="{% url 'assets:list' %}" class="text-sm" style="color: var(--muted);">Cancel</a>
   </form>
 </div>
 {% endblock %}

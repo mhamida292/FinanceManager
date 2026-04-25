@@ -1,46 +1,47 @@
 {% extends "base.html" %}
 {% block title %}Liabilities{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-6">
+<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
   <div>
     <h1 class="text-2xl font-bold">Liabilities</h1>
-    <div class="text-slate-500 text-sm">Total owed: <span class="font-mono text-red-300">${{ total|floatformat:2 }}</span></div>
+    <div class="text-sm" style="color: var(--muted);">Total owed: <span class="num font-semibold" style="color: var(--accent-lia);">${{ total|floatformat:2 }}</span></div>
   </div>
-  <a href="{% url 'liabilities:add' %}" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded">+ Add manual liability</a>
+  <a href="{% url 'liabilities:add' %}" class="font-bold px-4 py-2 rounded" style="background: var(--accent-positive); color: var(--bg);">+ Add manual liability</a>
 </div>
 
 {% if messages %}
   {% for message in messages %}
-  <div class="bg-{% if message.tags == 'error' %}red-900/40 border-red-700 text-red-200{% else %}emerald-900/40 border-emerald-700 text-emerald-200{% endif %} border p-3 rounded text-sm mb-4">
+  <div class="border p-3 rounded text-sm mb-4"
+       style="{% if message.tags == 'error' %}background: var(--tint-lia); border-color: var(--accent-lia); color: var(--accent-lia);{% else %}background: var(--tint-positive); border-color: var(--accent-positive); color: var(--accent-positive);{% endif %}">
     {{ message }}
   </div>
   {% endfor %}
 {% endif %}
 
 {% if not rows %}
-  <div class="bg-slate-900 border border-slate-800 rounded p-6 text-slate-400">
-    No liabilities. Bank-linked credit cards / loans show up here automatically. Click <strong class="text-slate-200">+ Add manual liability</strong> for student loans, mortgages, or other debts.
+  <div class="rounded border p-6 text-sm" style="background: var(--surface); border-color: var(--border); color: var(--muted);">
+    No liabilities. Bank-linked credit cards / loans show up here automatically. Click <strong style="color: var(--text);">+ Add manual liability</strong> for student loans, mortgages, or other debts.
   </div>
 {% else %}
-  <div class="bg-slate-900 border border-slate-800 rounded divide-y divide-slate-800">
+  <div class="rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
     {% for row in rows %}
-    <div class="flex items-center justify-between px-5 py-3 hover:bg-slate-800/40">
+    <div class="flex items-center justify-between px-5 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
       {% if row.source == 'bank' %}
         <a href="{% url 'banking:account_detail' row.bank_account_id %}" class="flex-1 min-w-0 pr-3">
           <div class="font-medium">{{ row.name }}</div>
-          <div class="text-xs text-slate-500">🔗 from linked bank · view transactions →</div>
+          <div class="text-xs" style="color: var(--muted);">🔗 from linked bank · view transactions →</div>
         </a>
       {% else %}
         <div class="flex-1 min-w-0 pr-3">
           <div class="font-medium">{{ row.name }}</div>
-          <div class="text-xs text-slate-500">✎ manual</div>
+          <div class="text-xs" style="color: var(--muted);">✎ manual</div>
         </div>
       {% endif %}
       <div class="flex items-center gap-3">
-        <div class="font-mono text-red-300">−${{ row.balance|floatformat:2 }}</div>
+        <div class="num font-semibold" style="color: var(--accent-lia);">−${{ row.balance|floatformat:2 }}</div>
         {% if row.source == 'manual' %}
-        <a href="{% url 'liabilities:edit' row.liability_id %}" class="text-slate-500 hover:text-white text-sm">✎</a>
-        <a href="{% url 'liabilities:delete' row.liability_id %}" class="text-slate-600 hover:text-red-400 text-sm">🗑</a>
+        <a href="{% url 'liabilities:edit' row.liability_id %}" class="text-sm" style="color: var(--dim);">✎</a>
+        <a href="{% url 'liabilities:delete' row.liability_id %}" class="text-sm" style="color: var(--dim);">🗑</a>
         {% endif %}
       </div>
     </div>

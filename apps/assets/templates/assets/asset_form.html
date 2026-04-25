@@ -2,12 +2,12 @@
 {% block title %}{% if mode == 'edit' %}Edit {{ asset.name }}{% else %}Add asset{% endif %}{% endblock %}
 {% block content %}
 <div class="max-w-xl mx-auto">
-  <a href="{% url 'assets:list' %}" class="text-slate-500 hover:text-white text-sm">← Assets</a>
+  <a href="{% url 'assets:list' %}" class="text-sm" style="color: var(--muted);">← Assets</a>
   <h1 class="text-2xl font-bold mt-2 mb-6">{% if mode == 'edit' %}Edit {{ asset.name }}{% else %}Add an asset{% endif %}</h1>
 
   {% if messages %}
     {% for message in messages %}
-    <div class="bg-red-900/40 border-red-700 text-red-200 border p-3 rounded text-sm mb-4">{{ message }}</div>
+    <div class="border p-3 rounded text-sm mb-4" style="background: var(--tint-lia); border-color: var(--accent-lia); color: var(--accent-lia);">{{ message }}</div>
     {% endfor %}
   {% endif %}
 
@@ -15,8 +15,8 @@
     {% csrf_token %}
 
     {% if mode != 'edit' %}
-    <div class="bg-slate-900 border border-slate-800 rounded p-4">
-      <div class="text-sm text-slate-400 mb-2">What kind of asset?</div>
+    <div class="rounded border p-4" style="background: var(--surface); border-color: var(--border);">
+      <div class="text-sm mb-2" style="color: var(--muted);">What kind of asset?</div>
       <label class="flex items-center gap-2 mb-1">
         <input type="radio" name="kind" value="scraped" {% if data.kind == 'scraped' %}checked{% endif %} onclick="toggleKind()">
         <span>📈 Scraped from a URL (gold coins, commodities)</span>
@@ -28,61 +28,68 @@
     </div>
     {% else %}
     <input type="hidden" name="kind" value="{{ asset.kind }}">
-    <div class="text-xs text-slate-500">{% if asset.kind == 'scraped' %}📈 Scraped{% else %}✎ Manual{% endif %} (kind can't be changed after creation)</div>
+    <div class="text-xs" style="color: var(--muted);">{% if asset.kind == 'scraped' %}📈 Scraped{% else %}✎ Manual{% endif %} (kind can't be changed after creation)</div>
     {% endif %}
 
     <div>
-      <label class="block text-sm text-slate-400 mb-1">Name *</label>
+      <label class="block text-sm mb-1" style="color: var(--muted);">Name *</label>
       <input name="name" type="text" required value="{{ data.name|default:'' }}"
-             class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2"
+             class="w-full rounded px-3 py-2"
+             style="background: var(--surface); border: 1px solid var(--border); color: var(--text);"
              placeholder="e.g. 1oz Gold Eagle, 2019 Camry, Cash at home">
     </div>
 
     <div id="scraped-fields" class="space-y-4" style="display:{% if data.kind == 'scraped' %}block{% else %}none{% endif %}">
       <div>
-        <label class="block text-sm text-slate-400 mb-1">URL *</label>
+        <label class="block text-sm mb-1" style="color: var(--muted);">URL *</label>
         <input name="source_url" type="url" value="{{ data.source_url|default:'' }}"
-               class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2"
+               class="w-full rounded px-3 py-2"
+               style="background: var(--surface); border: 1px solid var(--border); color: var(--text);"
                placeholder="https://accbullion.com/...">
       </div>
       <div>
-        <label class="block text-sm text-slate-400 mb-1">CSS selector (optional)</label>
+        <label class="block text-sm mb-1" style="color: var(--muted);">CSS selector (optional)</label>
         <input name="css_selector" type="text" value="{{ data.css_selector|default:'' }}"
-               class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 font-mono text-xs"
+               class="w-full rounded px-3 py-2 num text-xs"
+               style="background: var(--surface); border: 1px solid var(--border); color: var(--text);"
                placeholder=".product-price .amount — or leave blank for auto-detect">
-        <p class="text-xs text-slate-500 mt-1">Blank = scraper searches the page for the first <code>$X.XX</code>.</p>
+        <p class="text-xs mt-1" style="color: var(--muted);">Blank = scraper searches the page for the first <code>$X.XX</code>.</p>
       </div>
       <div class="flex gap-2">
         <div class="flex-1">
-          <label class="block text-sm text-slate-400 mb-1">Quantity</label>
+          <label class="block text-sm mb-1" style="color: var(--muted);">Quantity</label>
           <input name="quantity" type="text" value="{{ data.quantity|default:'1' }}"
-                 class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 font-mono">
+                 class="w-full rounded px-3 py-2 num"
+                 style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
         </div>
         <div class="flex-1">
-          <label class="block text-sm text-slate-400 mb-1">Unit</label>
+          <label class="block text-sm mb-1" style="color: var(--muted);">Unit</label>
           <input name="unit" type="text" value="{{ data.unit|default:'' }}" placeholder="oz / each"
-                 class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2">
+                 class="w-full rounded px-3 py-2"
+                 style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
         </div>
       </div>
     </div>
 
     <div id="manual-fields" class="space-y-4" style="display:{% if data.kind != 'scraped' %}block{% else %}none{% endif %}">
       <div>
-        <label class="block text-sm text-slate-400 mb-1">Total value *</label>
+        <label class="block text-sm mb-1" style="color: var(--muted);">Total value *</label>
         <input name="current_value" type="text" value="{{ data.current_value|default:'' }}" placeholder="18000.00"
-               class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 font-mono">
+               class="w-full rounded px-3 py-2 num"
+               style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
       </div>
     </div>
 
     <div>
-      <label class="block text-sm text-slate-400 mb-1">Notes</label>
+      <label class="block text-sm mb-1" style="color: var(--muted);">Notes</label>
       <textarea name="notes" rows="2"
-                class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2">{{ data.notes|default:'' }}</textarea>
+                class="w-full rounded px-3 py-2"
+                style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">{{ data.notes|default:'' }}</textarea>
     </div>
 
     <div class="flex items-center gap-3 pt-2">
-      <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2 rounded">Save</button>
-      <a href="{% url 'assets:list' %}" class="text-slate-400 hover:text-white text-sm">Cancel</a>
+      <button type="submit" class="font-bold px-5 py-2 rounded" style="background: var(--accent-positive); color: var(--bg);">Save</button>
+      <a href="{% url 'assets:list' %}" class="text-sm" style="color: var(--muted);">Cancel</a>
     </div>
   </form>
 
