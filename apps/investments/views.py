@@ -2,6 +2,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Prefetch
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -31,14 +32,14 @@ def investments_list(request):
     accounts = (
         InvestmentAccount.objects
         .for_user(request.user)
-        .prefetch_related("holdings")
+        .prefetch_related(Prefetch("holdings", queryset=Holding.objects.order_by("symbol")))
         .order_by("broker", "name")
     )
     sections = []
     portfolio_value = Decimal("0")
     portfolio_cost = Decimal("0")
     for acc in accounts:
-        holdings = list(acc.holdings.all().order_by("symbol"))
+        holdings = list(acc.holdings.all())  # already ordered by the Prefetch
         holdings_value = sum((h.market_value for h in holdings), Decimal("0"))
         holdings_cost = sum((h.cost_basis or Decimal("0") for h in holdings), Decimal("0"))
         section_total = holdings_value + acc.cash_balance
