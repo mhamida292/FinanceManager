@@ -127,44 +127,97 @@
     });
   })();
 
-  // Mobile sidebar swipe gestures: edge-swipe right to open, swipe left to close
+  // Mobile sidebar drag gesture — the drawer follows the finger in real time.
+  // Edge-touch + drag right opens; touch + drag left while open closes.
+  // Snaps to open or closed at touchend based on final position (>50% open snaps open).
   (function() {
     var sidebar = document.getElementById('sidebar');
     var scrim = document.getElementById('sidebar-scrim');
     if (!sidebar || !scrim) return;
 
-    var EDGE_PX = 24;       // touch must start within this many px of left edge to open
-    var THRESHOLD_PX = 60;  // minimum horizontal travel to count as a swipe
-    var startX = 0, startY = 0, startedAtEdge = false;
+    var EDGE_PX = 24;       // touch must start within this many px of left edge to start an open-drag
+    var DECISION_PX = 8;    // movement threshold before committing to horizontal vs vertical
+    var WIDTH = 240;        // must match the #sidebar width in app.css
+
+    var startX = 0, startY = 0, lastX = 0;
+    var startedAtEdge = false;
+    var startedOpen = false;
+    var tracking = false;   // true while we're listening to this touch
+    var dragging = false;   // true once we've committed to a horizontal drawer drag
 
     function isMobile() {
       return window.matchMedia('(max-width: 767px)').matches;
     }
 
-    document.addEventListener('touchstart', function(e) {
-      if (!isMobile()) return;
-      var t = e.touches[0];
-      startX = t.clientX;
-      startY = t.clientY;
-      startedAtEdge = startX <= EDGE_PX;
-    }, { passive: true });
+    function applyDrag(translate) {
+      sidebar.style.transition = 'none';
+      sidebar.style.transform = 'translateX(' + translate + 'px)';
+      var openness = (translate + WIDTH) / WIDTH;
+      scrim.style.transition = 'none';
+      scrim.style.opacity = openness;
+      scrim.style.pointerEvents = openness > 0 ? 'auto' : 'none';
+    }
 
-    document.addEventListener('touchend', function(e) {
-      if (!isMobile()) return;
-      var t = e.changedTouches[0];
-      var dx = t.clientX - startX;
-      var dy = t.clientY - startY;
-      if (Math.abs(dx) < THRESHOLD_PX) return;       // not enough horizontal travel
-      if (Math.abs(dy) > Math.abs(dx)) return;       // it was a vertical scroll, not a swipe
-
-      var isOpen = sidebar.classList.contains('open');
-      if (dx > 0 && startedAtEdge && !isOpen) {
+    function snapTo(open) {
+      // Restore CSS-driven transition, force a style flush, then toggle the class so
+      // the transform animates from its inline value to the class-defined target.
+      sidebar.style.transition = '';
+      scrim.style.transition = '';
+      void sidebar.offsetHeight;
+      sidebar.style.transform = '';
+      scrim.style.opacity = '';
+      scrim.style.pointerEvents = '';
+      if (open) {
         sidebar.classList.add('open');
         scrim.classList.add('open');
-      } else if (dx < 0 && isOpen) {
+      } else {
         sidebar.classList.remove('open');
         scrim.classList.remove('open');
       }
+    }
+
+    document.addEventListener('touchstart', function(e) {
+      if (!isMobile()) return;
+      var t = e.touches[0];
+      startX = lastX = t.clientX;
+      startY = t.clientY;
+      startedAtEdge = startX <= EDGE_PX;
+      startedOpen = sidebar.classList.contains('open');
+      tracking = startedAtEdge || startedOpen;
+      dragging = false;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function(e) {
+      if (!tracking) return;
+      var t = e.touches[0];
+      var dx = t.clientX - startX;
+      var dy = t.clientY - startY;
+
+      if (!dragging) {
+        if (Math.abs(dx) < DECISION_PX && Math.abs(dy) < DECISION_PX) return;
+        if (Math.abs(dy) > Math.abs(dx)) { tracking = false; return; }     // vertical scroll, give up gesture
+        if (startedOpen && dx > 0) { tracking = false; return; }           // can't open further when already open
+        dragging = true;
+      }
+
+      e.preventDefault();  // prevent page scroll while dragging the drawer
+      lastX = t.clientX;
+      var basePos = startedOpen ? 0 : -WIDTH;
+      var translate = Math.min(0, Math.max(-WIDTH, basePos + dx));
+      applyDrag(translate);
+    }, { passive: false });
+
+    document.addEventListener('touchend', function() {
+      if (!tracking) return;
+      var wasDragging = dragging;
+      tracking = false;
+      dragging = false;
+      if (!wasDragging) return;
+
+      var basePos = startedOpen ? 0 : -WIDTH;
+      var finalPos = Math.min(0, Math.max(-WIDTH, basePos + (lastX - startX)));
+      var openness = (finalPos + WIDTH) / WIDTH;
+      snapTo(openness > 0.5);
     }, { passive: true });
   })();
 </script>
