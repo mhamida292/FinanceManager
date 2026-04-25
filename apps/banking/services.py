@@ -40,18 +40,35 @@ def sync_institution(institution: Institution) -> SyncResult:
 
     with transaction.atomic():
         for payload in provider.fetch_accounts_with_transactions(institution.access_url):
-            acc, acc_created = Account.objects.update_or_create(
-                institution=institution,
-                external_id=payload.account.external_id,
-                defaults={
-                    "name": payload.account.name,
-                    "type": payload.account.type,
-                    "balance": payload.account.balance,
-                    "currency": payload.account.currency,
-                    "org_name": payload.account.org_name,
-                    "last_synced_at": timezone.now(),
-                },
-            )
+            # Type is set on initial create from the provider's heuristic guess.
+            # On update we PRESERVE the existing type — if a user reclassified an
+            # account in the admin (e.g. "Other" → "Credit Card"), sync must not
+            # clobber that. Same lock pattern as Holding.cost_basis_source=manual.
+            existing = Account.objects.filter(
+                institution=institution, external_id=payload.account.external_id,
+            ).first()
+            update_fields = {
+                "name": payload.account.name,
+                "balance": payload.account.balance,
+                "currency": payload.account.currency,
+                "org_name": payload.account.org_name,
+                "last_synced_at": timezone.now(),
+            }
+            if existing is None:
+                acc = Account.objects.create(
+                    institution=institution,
+                    external_id=payload.account.external_id,
+                    type=payload.account.type,
+                    **update_fields,
+                )
+                acc_created = True
+            else:
+                for field, value in update_fields.items():
+                    setattr(existing, field, value)
+                existing.save()
+                acc = existing
+                acc_created = False
+
             if acc_created:
                 accounts_created += 1
             else:

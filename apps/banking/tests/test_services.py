@@ -101,3 +101,22 @@ def test_sync_does_not_overwrite_user_rename():
     assert account.effective_name == "Joint Checking"
     # Provider-sourced name stays current too
     assert account.name == "Checking"
+
+
+@pytest.mark.django_db
+def test_sync_does_not_overwrite_user_type_change():
+    """After a user reclassifies an account (e.g. Other → Credit), sync preserves the change."""
+    user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")
+    inst = link_institution(
+        user=user, setup_token="base64token",
+        display_name="Main", provider_name="fake",
+    )
+    account = Account.objects.get(institution=inst)
+    # Provider's heuristic guess was 'checking' (name='Checking'); user reclassifies as credit.
+    account.type = "credit"
+    account.save(update_fields=["type"])
+
+    sync_institution(inst)
+
+    account.refresh_from_db()
+    assert account.type == "credit", "Manual type override must survive sync"
