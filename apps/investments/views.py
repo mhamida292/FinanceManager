@@ -32,14 +32,36 @@ def investments_list(request):
         InvestmentAccount.objects
         .for_user(request.user)
         .prefetch_related("holdings")
+        .order_by("broker", "name")
     )
-    grand_total = Decimal("0")
+    sections = []
+    portfolio_value = Decimal("0")
+    portfolio_cost = Decimal("0")
     for acc in accounts:
-        grand_total += sum((h.market_value for h in acc.holdings.all()), Decimal("0"))
-        grand_total += acc.cash_balance
+        holdings = list(acc.holdings.all().order_by("symbol"))
+        holdings_value = sum((h.market_value for h in holdings), Decimal("0"))
+        holdings_cost = sum((h.cost_basis or Decimal("0") for h in holdings), Decimal("0"))
+        section_total = holdings_value + acc.cash_balance
+        section_gain = (holdings_value - holdings_cost) if holdings_cost else None
+        section_gain_pct = (section_gain / holdings_cost * 100) if section_gain is not None and holdings_cost else None
+        sections.append({
+            "account": acc,
+            "holdings": holdings,
+            "holdings_value": holdings_value,
+            "section_total": section_total,
+            "section_gain": section_gain,
+            "section_gain_pct": section_gain_pct,
+        })
+        portfolio_value += section_total
+        portfolio_cost += holdings_cost
+    portfolio_holdings_value = sum((s["holdings_value"] for s in sections), Decimal("0"))
+    portfolio_gain = (portfolio_holdings_value - portfolio_cost) if portfolio_cost else None
+    portfolio_gain_pct = (portfolio_gain / portfolio_cost * 100) if portfolio_gain is not None and portfolio_cost else None
     return render(request, "investments/investments_list.html", {
-        "accounts": accounts,
-        "grand_total": grand_total,
+        "sections": sections,
+        "portfolio_value": portfolio_value,
+        "portfolio_gain": portfolio_gain,
+        "portfolio_gain_pct": portfolio_gain_pct,
     })
 
 

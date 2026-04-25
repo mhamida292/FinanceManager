@@ -48,6 +48,133 @@ def test_list_shows_only_own_accounts(alice, bob, alice_client):
     assert b"Bob IRA" not in r.content
 
 
+def test_list_empty_context(alice_client):
+    """Empty state: no investment accounts → empty sections list, portfolio_value = 0."""
+    r = alice_client.get(reverse("investments:list"))
+    assert r.status_code == 200
+    assert r.context["sections"] == []
+    assert r.context["portfolio_value"] == Decimal("0")
+    assert r.context["portfolio_gain"] is None
+
+
+def test_list_sections_shape(alice, alice_client):
+    """sections is in context with one entry per investment account, with required keys."""
+    acc1 = InvestmentAccount.objects.create(
+        user=alice, source="manual", broker="Fidelity", name="401k",
+        cash_balance=Decimal("500"),
+    )
+    Holding.objects.create(
+        investment_account=acc1, symbol="VTI", shares=Decimal("10"),
+        current_price=Decimal("200"), market_value=Decimal("2000"),
+        cost_basis=Decimal("1500"),
+    )
+    acc2 = InvestmentAccount.objects.create(
+        user=alice, source="manual", broker="Vanguard", name="IRA",
+        cash_balance=Decimal("0"),
+    )
+    Holding.objects.create(
+        investment_account=acc2, symbol="VXUS", shares=Decimal("5"),
+        current_price=Decimal("60"), market_value=Decimal("300"),
+        cost_basis=Decimal("400"),
+    )
+
+    r = alice_client.get(reverse("investments:list"))
+    assert r.status_code == 200
+    sections = r.context["sections"]
+    assert len(sections) == 2
+    for s in sections:
+        assert "account" in s
+        assert "holdings" in s
+        assert "holdings_value" in s
+        assert "section_total" in s
+        assert "section_gain" in s
+        assert "section_gain_pct" in s
+
+    # ordered by broker, name → Fidelity 401k first, Vanguard IRA second
+    fidelity = sections[0]
+    vanguard = sections[1]
+    assert fidelity["account"].id == acc1.id
+    assert fidelity["holdings_value"] == Decimal("2000")
+    assert fidelity["section_total"] == Decimal("2500")  # holdings + cash
+    assert fidelity["section_gain"] == Decimal("500")  # 2000 - 1500
+
+    assert vanguard["account"].id == acc2.id
+    assert vanguard["holdings_value"] == Decimal("300")
+    assert vanguard["section_total"] == Decimal("300")
+    assert vanguard["section_gain"] == Decimal("-100")  # 300 - 400
+
+
+def test_list_portfolio_value_equals_sum_of_section_totals(alice, alice_client):
+    """portfolio_value in context equals sum of section_totals."""
+    acc1 = InvestmentAccount.objects.create(
+        user=alice, source="manual", broker="A", name="One",
+        cash_balance=Decimal("100"),
+    )
+    Holding.objects.create(
+        investment_account=acc1, symbol="AAA", shares=Decimal("1"),
+        current_price=Decimal("50"), market_value=Decimal("50"),
+        cost_basis=Decimal("40"),
+    )
+    acc2 = InvestmentAccount.objects.create(
+        user=alice, source="manual", broker="B", name="Two",
+        cash_balance=Decimal("25"),
+    )
+    Holding.objects.create(
+        investment_account=acc2, symbol="BBB", shares=Decimal("2"),
+        current_price=Decimal("75"), market_value=Decimal("150"),
+        cost_basis=Decimal("100"),
+    )
+
+    r = alice_client.get(reverse("investments:list"))
+    sections = r.context["sections"]
+    expected_total = sum((s["section_total"] for s in sections), Decimal("0"))
+    assert r.context["portfolio_value"] == expected_total
+    # Sanity: 50 + 100 + 150 + 25 = 325
+    assert r.context["portfolio_value"] == Decimal("325")
+    # Portfolio gain excludes cash: (50 + 150) - (40 + 100) = 60
+    assert r.context["portfolio_gain"] == Decimal("60")
+
+
+def test_list_holdings_appear_in_rendered_html(alice, alice_client):
+    """Holdings symbols render in the page body."""
+    acc = InvestmentAccount.objects.create(
+        user=alice, source="manual", broker="Fidelity", name="401k",
+    )
+    Holding.objects.create(
+        investment_account=acc, symbol="VTI", shares=Decimal("10"),
+        current_price=Decimal("200"), market_value=Decimal("2000"),
+        cost_basis=Decimal("1500"),
+    )
+    Holding.objects.create(
+        investment_account=acc, symbol="MSFT", shares=Decimal("5"),
+        current_price=Decimal("400"), market_value=Decimal("2000"),
+        cost_basis=Decimal("1800"),
+    )
+
+    r = alice_client.get(reverse("investments:list"))
+    assert r.status_code == 200
+    assert b"VTI" in r.content
+    assert b"MSFT" in r.content
+    assert b"Portfolio value" in r.content
+
+
+def test_list_holdings_isolated_between_users(alice, bob, alice_client):
+    """Bob's holdings should not appear when alice views the list."""
+    bob_acc = InvestmentAccount.objects.create(
+        user=bob, source="manual", broker="Vanguard", name="Bob IRA",
+    )
+    Holding.objects.create(
+        investment_account=bob_acc, symbol="BOBSECRET", shares=Decimal("1"),
+        current_price=Decimal("100"), market_value=Decimal("100"),
+    )
+
+    r = alice_client.get(reverse("investments:list"))
+    assert r.status_code == 200
+    assert b"BOBSECRET" not in r.content
+    assert b"Bob IRA" not in r.content
+    assert r.context["sections"] == []
+
+
 def test_add_manual_account_creates_and_redirects(alice_client):
     r = alice_client.post(reverse("investments:add_account"), {
         "broker": "Fidelity", "name": "401k", "notes": "employer match",

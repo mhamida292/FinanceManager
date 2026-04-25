@@ -2,10 +2,20 @@
 {% load money %}
 {% block title %}Investments{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+
+<div class="flex items-end justify-between mb-6 flex-wrap gap-4">
   <div>
-    <h1 class="text-2xl font-bold">Investments</h1>
-    <div class="text-sm" style="color: var(--muted);">Total: <span class="num font-semibold" style="color: var(--accent-positive);">{{ grand_total|money }}</span></div>
+    <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Portfolio value</div>
+    <div class="text-3xl sm:text-4xl font-bold num mt-1" style="color: var(--accent-positive);">{{ portfolio_value|money }}</div>
+    {% if portfolio_gain is not None %}
+    <div class="text-sm num mt-1" style="color: {% if portfolio_gain < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+      {{ portfolio_gain|money:"signed" }}
+      {% if portfolio_gain_pct is not None %}
+        · {% if portfolio_gain_pct >= 0 %}+{% endif %}{{ portfolio_gain_pct|floatformat:2 }}%
+      {% endif %}
+      <span style="color: var(--muted);">all-time gain/loss</span>
+    </div>
+    {% endif %}
   </div>
   <div class="flex gap-2">
     <form method="post" action="{% url 'investments:refresh_prices' %}" class="m-0">
@@ -25,27 +35,101 @@
   {% endfor %}
 {% endif %}
 
-{% if not accounts %}
+{% if not sections %}
   <div class="rounded border p-6 text-sm" style="background: var(--surface); border-color: var(--border); color: var(--muted);">
-    No investment accounts yet. Click <strong style="color: var(--text);">+ Manual account</strong> to type in a brokerage that SimpleFIN doesn't reach, or sync an existing linked bank.
+    No investment accounts yet. Click <strong style="color: var(--text);">+ Manual account</strong> to add a brokerage SimpleFIN doesn't reach.
   </div>
 {% else %}
-  <div class="rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
-    {% for acc in accounts %}
-    <div class="flex items-center justify-between px-5 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
-      <a href="{% url 'investments:account_detail' acc.id %}" class="flex-1 flex items-center justify-between min-w-0 pr-3">
+  <div class="space-y-6">
+    {% for s in sections %}
+    <section class="rounded border" style="background: var(--surface); border-color: var(--border);">
+
+      {# Account section header #}
+      <div class="px-5 py-4 flex items-end justify-between gap-3 flex-wrap" style="border-bottom: 1px solid var(--border);">
         <div class="min-w-0">
-          <div class="font-semibold truncate">{{ acc.effective_name }}</div>
-          <div class="text-xs" style="color: var(--muted);">{{ acc.broker|default:"" }} · {{ acc.get_source_display }}</div>
+          <a href="{% url 'investments:account_detail' s.account.id %}" class="block">
+            <div class="font-semibold text-lg truncate">{{ s.account.effective_name }}</div>
+            <div class="text-xs" style="color: var(--muted);">
+              {{ s.account.broker|default:s.account.get_source_display }}
+              {% if s.account.cash_balance %} · {{ s.account.cash_balance|money }} cash{% endif %}
+            </div>
+          </a>
         </div>
         <div class="text-right">
-          {% with total=acc.holdings.all|length %}
-          <div class="text-xs" style="color: var(--muted);"><span class="num">{{ total }}</span> position{{ total|pluralize }}</div>
-          {% endwith %}
+          <div class="num font-bold text-lg whitespace-nowrap" style="color: var(--accent-positive);">{{ s.section_total|money }}</div>
+          {% if s.section_gain is not None %}
+          <div class="text-xs num" style="color: {% if s.section_gain < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+            {{ s.section_gain|money:"signed" }}
+            {% if s.section_gain_pct is not None %}· {% if s.section_gain_pct >= 0 %}+{% endif %}{{ s.section_gain_pct|floatformat:2 }}%{% endif %}
+          </div>
+          {% endif %}
         </div>
-      </a>
-      <a href="{% url 'investments:delete_account' acc.id %}" class="text-sm ml-3" style="color: var(--dim);" title="Delete">🗑</a>
-    </div>
+      </div>
+
+      {# Holdings — empty state if no holdings #}
+      {% if not s.holdings %}
+        <div class="px-5 py-4 text-sm" style="color: var(--muted);">No holdings — cash only.</div>
+      {% else %}
+        {# Desktop table #}
+        <div class="hidden md:block">
+          <table class="w-full text-sm">
+            <thead style="border-bottom: 1px solid var(--border); color: var(--dim);">
+              <tr class="text-[10px] uppercase tracking-widest">
+                <th class="px-5 py-2 text-left">Symbol</th>
+                <th class="px-5 py-2 text-right">Shares</th>
+                <th class="px-5 py-2 text-right">Price</th>
+                <th class="px-5 py-2 text-right">Value</th>
+                <th class="px-5 py-2 text-right">Cost basis</th>
+                <th class="px-5 py-2 text-right">Gain / loss</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for h in s.holdings %}
+              <tr style="border-top: 1px solid var(--border);">
+                <td class="px-5 py-2 num font-semibold">
+                  <a href="{% url 'investments:account_detail' s.account.id %}">{{ h.symbol }}</a>
+                </td>
+                <td class="px-5 py-2 text-right num">{{ h.shares }}</td>
+                <td class="px-5 py-2 text-right num">{{ h.current_price|money }}</td>
+                <td class="px-5 py-2 text-right num">{{ h.market_value|money }}</td>
+                <td class="px-5 py-2 text-right num">{{ h.cost_basis|money }}</td>
+                <td class="px-5 py-2 text-right num"
+                    style="color: {% if h.gain_loss and h.gain_loss < 0 %}var(--accent-negative){% elif h.gain_loss %}var(--accent-positive){% endif %};">
+                  {% if h.gain_loss is not None %}
+                    {{ h.gain_loss|money:"signed" }}
+                    <div class="text-xs" style="color: var(--muted);">{% if h.gain_loss_percent >= 0 %}+{% endif %}{{ h.gain_loss_percent|floatformat:2 }}%</div>
+                  {% else %}<span style="color: var(--dim);">—</span>{% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {# Mobile cards #}
+        <div class="md:hidden">
+          {% for h in s.holdings %}
+          <div class="px-5 py-3" style="border-top: 1px solid var(--border);">
+            <div class="flex items-baseline justify-between gap-3">
+              <div class="num font-semibold truncate min-w-0">{{ h.symbol }}</div>
+              <div class="num font-semibold whitespace-nowrap" style="color: var(--accent-positive);">{{ h.market_value|money }}</div>
+            </div>
+            <div class="flex items-baseline justify-between gap-3 mt-1">
+              <div class="text-xs num" style="color: var(--muted);">
+                <span class="num">{{ h.shares }}</span> sh @ <span class="num">{{ h.current_price|money }}</span>
+              </div>
+              {% if h.gain_loss is not None %}
+              <div class="text-xs num whitespace-nowrap" style="color: {% if h.gain_loss < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+                {{ h.gain_loss|money:"signed" }}
+                · {% if h.gain_loss_percent >= 0 %}+{% endif %}{{ h.gain_loss_percent|floatformat:2 }}%
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </section>
     {% endfor %}
   </div>
 {% endif %}
