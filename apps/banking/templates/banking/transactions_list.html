@@ -85,22 +85,20 @@
     {% endfor %}
   </div>
 
-  {# Pagination — preserves existing query string #}
+  {# Pagination — numbered links with ellipsis windowing for long ranges #}
   {% if page_obj.has_other_pages %}
-  <div class="mt-4 flex items-center justify-between text-sm">
-    <div style="color: var(--muted);">Page <span class="num">{{ page_obj.number }}</span> of <span class="num">{{ page_obj.paginator.num_pages }}</span></div>
-    <div class="flex gap-3">
-      {% if page_obj.has_previous %}
-        <a href="?{% if selected_account %}account={{ selected_account }}&{% endif %}{% if selected_range %}range={{ selected_range }}&{% endif %}{% if search %}q={{ search|urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}" style="color: var(--accent-positive);">← Prev</a>
+  <div class="mt-4 flex flex-wrap items-center justify-center gap-1 text-sm">
+    {% for p in page_window %}
+      {% if p %}
+        {% if p == page_obj.number %}
+          <span class="num font-bold px-2.5 py-1 rounded" style="background: var(--tint-positive); color: var(--accent-positive);">{{ p }}</span>
+        {% else %}
+          <a class="num px-2.5 py-1 rounded hover:underline" href="?{% if filter_qs %}{{ filter_qs }}&{% endif %}page={{ p }}" style="color: var(--muted);">{{ p }}</a>
+        {% endif %}
       {% else %}
-        <span style="color: var(--dim);">← Prev</span>
+        <span class="px-1" style="color: var(--dim);">…</span>
       {% endif %}
-      {% if page_obj.has_next %}
-        <a href="?{% if selected_account %}account={{ selected_account }}&{% endif %}{% if selected_range %}range={{ selected_range }}&{% endif %}{% if search %}q={{ search|urlencode }}&{% endif %}page={{ page_obj.next_page_number }}" style="color: var(--accent-positive);">Next →</a>
-      {% else %}
-        <span style="color: var(--dim);">Next →</span>
-      {% endif %}
-    </div>
+    {% endfor %}
   </div>
   {% endif %}
 {% endif %}

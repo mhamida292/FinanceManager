@@ -1,4 +1,5 @@
 from datetime import timedelta
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -12,6 +13,23 @@ from django.views.decorators.http import require_http_methods
 
 from .models import Account, Institution, Transaction
 from .services import link_institution, sync_institution
+
+
+def _page_window(current: int, total: int, edge: int = 1, around: int = 2) -> list[int | None]:
+    """Numbered-pagination window. Always shows pages 1..edge, total-edge+1..total, and current ± around. None entries are ellipsis gaps."""
+    if total <= edge * 2 + around * 2 + 1:
+        return list(range(1, total + 1))
+    pages = set(range(1, edge + 1))
+    pages.update(range(total - edge + 1, total + 1))
+    pages.update(range(max(1, current - around), min(total, current + around) + 1))
+    out: list[int | None] = []
+    prev = 0
+    for p in sorted(pages):
+        if p > prev + 1:
+            out.append(None)
+        out.append(p)
+        prev = p
+    return out
 
 
 @login_required
@@ -169,10 +187,22 @@ def transactions_list(request):
 
     accounts = Account.objects.for_user(request.user).order_by("institution__name", "name")
 
+    # Pre-compute the filter query string so each page link doesn't have to rebuild it
+    qs_params: dict[str, object] = {}
+    if account_id and account_id.isdigit():
+        qs_params["account"] = int(account_id)
+    if preset:
+        qs_params["range"] = preset
+    if search:
+        qs_params["q"] = search
+    filter_qs = urlencode(qs_params)
+
     return render(request, "banking/transactions_list.html", {
         "page_obj": page_obj,
         "accounts": accounts,
         "selected_account": int(account_id) if account_id and account_id.isdigit() else None,
         "selected_range": preset,
         "search": search,
+        "filter_qs": filter_qs,
+        "page_window": _page_window(page_obj.number, paginator.num_pages),
     })
