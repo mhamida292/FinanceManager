@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en" data-theme="a">
+<head>
+<meta charset="utf-8">
+<title>Finance dashboard — color options</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+/* ============ THEME A — Quiet (single accent, no per-category color) ============ */
+[data-theme="a"] {
+  --bg: #0a0a0a;
+  --surface: #161616;
+  --border: #262626;
+  --text: #e5e5e5;
+  --muted: #737373;
+  --dim: #525252;
+  --accent-cash: #a3a3a3;
+  --accent-inv: #a3a3a3;
+  --accent-assets: #a3a3a3;
+  --accent-lia: #a3a3a3;
+  --accent-positive: #6aaa86;
+  --accent-negative: #c66b6b;
+  --tint-positive: rgba(106, 170, 134, 0.10);
+  --logo-color: #a3a3a3;
+}
+
+/* ============ THEME B — Warm slate (desaturated earthy on warm dark) ============ */
+[data-theme="b"] {
+  --bg: #1c1917;
+  --surface: #292524;
+  --border: #44403c;
+  --text: #f5f5f4;
+  --muted: #a8a29e;
+  --dim: #78716c;
+  --accent-cash: #7a9b9b;
+  --accent-inv: #9b8aa3;
+  --accent-assets: #b59560;
+  --accent-lia: #b87575;
+  --accent-positive: #7fb285;
+  --accent-negative: #c66b6b;
+  --tint-positive: rgba(127, 178, 133, 0.12);
+  --logo-color: #7fb285;
+}
+
+/* ============ THEME C — Mono blue (single hue, very uniform) ============ */
+[data-theme="c"] {
+  --bg: #0a1628;
+  --surface: #142340;
+  --border: #1d3050;
+  --text: #cfd8dc;
+  --muted: #6e8aab;
+  --dim: #4a637f;
+  --accent-cash: #5b9dd9;
+  --accent-inv: #5b9dd9;
+  --accent-assets: #5b9dd9;
+  --accent-lia: #8a9eb5;
+  --accent-positive: #5b9dd9;
+  --accent-negative: #d97070;
+  --tint-positive: rgba(91, 157, 217, 0.12);
+  --logo-color: #5b9dd9;
+}
+
+/* ============ THEME D — Light (cream BG, original accents) ============ */
+[data-theme="d"] {
+  --bg: #fafaf9;
+  --surface: #ffffff;
+  --border: #e7e5e4;
+  --text: #1c1917;
+  --muted: #78716c;
+  --dim: #a8a29e;
+  --accent-cash: #2563eb;
+  --accent-inv: #7c3aed;
+  --accent-assets: #d97706;
+  --accent-lia: #dc2626;
+  --accent-positive: #059669;
+  --accent-negative: #dc2626;
+  --tint-positive: rgba(5, 150, 105, 0.08);
+  --logo-color: #059669;
+}
+
+/* ============ THEME E — Current (for reference) ============ */
+[data-theme="e"] {
+  --bg: #020617;
+  --surface: #0f172a;
+  --border: #1e293b;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --dim: #475569;
+  --accent-cash: #60a5fa;
+  --accent-inv: #a78bfa;
+  --accent-assets: #fbbf24;
+  --accent-lia: #f87171;
+  --accent-positive: #34d399;
+  --accent-negative: #f87171;
+  --tint-positive: rgba(52, 211, 153, 0.12);
+  --logo-color: #34d399;
+}
+
+html { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
+body { background: var(--bg); color: var(--text); transition: background 200ms, color 200ms; }
+.num { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+/* Theme picker bar */
+.picker {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+  color: white;
+  display: flex; gap: 8px; align-items: center;
+  padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.1);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+.picker button {
+  padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: white;
+  cursor: pointer; transition: background 150ms;
+}
+.picker button:hover { background: rgba(255,255,255,0.15); }
+.picker button.active { background: white; color: black; }
+.picker .label { font-size: 12px; color: rgba(255,255,255,0.6); margin-right: 8px; }
+.picker .name { font-size: 12px; color: rgba(255,255,255,0.8); margin-left: auto; }
+</style>
+</head>
+<body>
+
+<div class="picker">
+  <span class="label">PREVIEW:</span>
+  <button data-set="a" class="active">A · Quiet</button>
+  <button data-set="b">B · Warm slate</button>
+  <button data-set="c">C · Mono blue</button>
+  <button data-set="d">D · Light</button>
+  <button data-set="e">E · Current</button>
+  <span class="name" id="theme-name">A — Quiet (single accent, no per-category color)</span>
+</div>
+
+<!-- ============ TOP BAR ============ -->
+<header class="sticky z-30 flex items-center justify-between px-4 md:px-6 h-[52px] border-b" style="top: 49px; background: var(--surface); border-color: var(--border);">
+  <div class="flex items-center gap-3">
+    <span class="font-bold tracking-widest" style="color: var(--logo-color); font-size: 13px;">○ FINANCE</span>
+  </div>
+  <div class="flex items-center gap-3">
+    <button class="p-1 text-sm" style="color: var(--muted);" title="Sync">⟳</button>
+    <button class="p-1 text-sm" style="color: var(--muted);" title="Theme">☾</button>
+    <button class="text-sm" style="color: var(--muted);">mhamida292 ▾</button>
+  </div>
+</header>
+
+<!-- ============ LAYOUT ============ -->
+<div class="flex">
+
+  <!-- ============ SIDEBAR ============ -->
+  <nav class="sticky h-[calc(100vh-101px)] w-[180px] flex-shrink-0 border-r p-4 overflow-y-auto" style="top: 101px; background: var(--surface); border-color: var(--border);">
+    <div class="text-[10px] font-semibold tracking-widest mb-2" style="color: var(--dim);">VIEW</div>
+    <a class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5" style="background: var(--tint-positive); color: var(--accent-positive);">Dashboard</a>
+    <a class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5" style="color: var(--muted);">Banks</a>
+    <a class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5" style="color: var(--muted);">Investments</a>
+    <a class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5" style="color: var(--muted);">Assets</a>
+    <a class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5" style="color: var(--muted);">Liabilities</a>
+    <div class="text-[10px] font-semibold tracking-widest mt-6 mb-2" style="color: var(--dim);">ACCOUNT</div>
+    <a class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5" style="color: var(--muted);">Settings</a>
+    <a class="flex items-center justify-between px-2 py-1.5 rounded text-sm mb-0.5" style="color: var(--muted);">Sign out</a>
+  </nav>
+
+  <!-- ============ MAIN ============ -->
+  <main class="flex-1 min-w-0 w-full max-w-[1280px] mx-auto p-4 md:p-6">
+
+    <!-- Net worth + sparkline -->
+    <div class="flex items-end justify-between mb-6 flex-wrap gap-4">
+      <div>
+        <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Net worth</div>
+        <div class="text-3xl sm:text-4xl font-bold num mt-1" style="color: var(--accent-positive);">$48,648.21</div>
+      </div>
+      <div class="flex items-center gap-3">
+        <svg width="160" height="40" viewBox="0 0 160 40">
+          <polyline points="0,30 20,28 40,32 60,25 80,22 100,18 120,20 140,12 160,8" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--accent-positive);"/>
+        </svg>
+        <div class="text-xs" style="color: var(--muted);">30 days</div>
+      </div>
+    </div>
+
+    <!-- 4 stat cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+      <a class="rounded p-4 border block" style="background: var(--surface); border-color: var(--border);">
+        <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Cash</div>
+        <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-cash);">$5,234.10</div>
+        <div class="text-[10px] mt-1" style="color: var(--dim);">3 accounts</div>
+      </a>
+      <a class="rounded p-4 border block" style="background: var(--surface); border-color: var(--border);">
+        <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Investments</div>
+        <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-inv);">$42,180.55</div>
+        <div class="text-[10px] mt-1" style="color: var(--dim);">12 positions</div>
+      </a>
+      <a class="rounded p-4 border block" style="background: var(--surface); border-color: var(--border);">
+        <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Assets</div>
+        <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-assets);">$1,234.56</div>
+        <div class="text-[10px] mt-1" style="color: var(--dim);">1 item</div>
+      </a>
+      <a class="rounded p-4 border block" style="background: var(--surface); border-color: var(--border);">
+        <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Liabilities</div>
+        <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-lia);">−$1,200.00</div>
+        <div class="text-[10px] mt-1" style="color: var(--dim);">credit + loans</div>
+      </a>
+    </div>
+
+    <!-- Transactions -->
+    <div class="flex items-center justify-between mb-2">
+      <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Latest transactions</div>
+      <span class="text-xs" style="color: var(--dim);">(See all → coming in Phase 7)</span>
+    </div>
+
+    <div class="rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+      <table class="w-full text-sm">
+        <thead style="border-bottom: 1px solid var(--border); color: var(--dim);">
+          <tr class="text-[10px] uppercase tracking-widest">
+            <th class="px-4 py-2 text-left w-20">Date</th>
+            <th class="px-4 py-2 text-left">Payee</th>
+            <th class="px-4 py-2 text-right w-32">Account</th>
+            <th class="px-4 py-2 text-right w-28">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-top: 1px solid var(--border);">
+            <td class="px-4 py-2 num text-xs" style="color: var(--muted);">Apr 23</td>
+            <td class="px-4 py-2">Trader Joe's</td>
+            <td class="px-4 py-2 text-right text-xs" style="color: var(--muted);">Chase Checking</td>
+            <td class="px-4 py-2 text-right num font-semibold" style="color: var(--accent-negative);">−$54.32</td>
+          </tr>
+          <tr style="border-top: 1px solid var(--border);">
+            <td class="px-4 py-2 num text-xs" style="color: var(--muted);">Apr 22</td>
+            <td class="px-4 py-2">Payroll · Acme Corp</td>
+            <td class="px-4 py-2 text-right text-xs" style="color: var(--muted);">Chase Checking</td>
+            <td class="px-4 py-2 text-right num font-semibold" style="color: var(--accent-positive);">+$2,400.00</td>
+          </tr>
+          <tr style="border-top: 1px solid var(--border);">
+            <td class="px-4 py-2 num text-xs" style="color: var(--muted);">Apr 21</td>
+            <td class="px-4 py-2">Spotify</td>
+            <td class="px-4 py-2 text-right text-xs" style="color: var(--muted);">Apple Card</td>
+            <td class="px-4 py-2 text-right num font-semibold" style="color: var(--accent-negative);">−$10.99</td>
+          </tr>
+          <tr style="border-top: 1px solid var(--border);">
+            <td class="px-4 py-2 num text-xs" style="color: var(--muted);">Apr 20</td>
+            <td class="px-4 py-2">Shell</td>
+            <td class="px-4 py-2 text-right text-xs" style="color: var(--muted);">Chase Sapphire</td>
+            <td class="px-4 py-2 text-right num font-semibold" style="color: var(--accent-negative);">−$48.10</td>
+          </tr>
+          <tr style="border-top: 1px solid var(--border);">
+            <td class="px-4 py-2 num text-xs" style="color: var(--muted);">Apr 19</td>
+            <td class="px-4 py-2">Stock dividend · AAPL</td>
+            <td class="px-4 py-2 text-right text-xs" style="color: var(--muted);">Robinhood</td>
+            <td class="px-4 py-2 text-right num font-semibold" style="color: var(--accent-positive);">+$23.50</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const names = {
+  a: 'A — Quiet (single accent, no per-category color)',
+  b: 'B — Warm slate (desaturated earthy on warm dark)',
+  c: 'C — Mono blue (single hue, very uniform)',
+  d: 'D — Light by default (cream BG, original accents)',
+  e: 'E — Current (for comparison)',
+};
+document.querySelectorAll('.picker button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const t = btn.dataset.set;
+    document.documentElement.setAttribute('data-theme', t);
+    document.querySelectorAll('.picker button').forEach(b => b.classList.toggle('active', b === btn));
+    document.getElementById('theme-name').textContent = names[t];
+  });
+});
+</script>
+</body>
+</html>
