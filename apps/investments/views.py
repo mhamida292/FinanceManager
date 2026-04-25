@@ -36,6 +36,7 @@ def investments_list(request):
     grand_total = Decimal("0")
     for acc in accounts:
         grand_total += sum((h.market_value for h in acc.holdings.all()), Decimal("0"))
+        grand_total += acc.cash_balance
     return render(request, "investments/investments_list.html", {
         "accounts": accounts,
         "grand_total": grand_total,
