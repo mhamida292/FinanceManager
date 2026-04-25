@@ -14,50 +14,25 @@
   {% endfor %}
 {% endif %}
 
-{% if not institutions %}
+{% if not accounts %}
   <div class="rounded border p-6 text-sm" style="background: var(--surface); border-color: var(--border); color: var(--muted);">
-    No banks linked yet. Click <strong style="color: var(--text);">Link account</strong> to connect a bank via SimpleFIN.
+    No accounts yet. Link a bank in <a href="{% url 'settings' %}" class="underline" style="color: var(--accent-positive);">Settings</a>, then press the ⟳ in the top bar to sync.
   </div>
 {% else %}
-  <div class="space-y-4">
-    {% for inst in institutions %}
-    <div class="rounded border" style="background: var(--surface); border-color: var(--border);">
-      <div class="flex items-center justify-between px-5 py-3" style="border-bottom: 1px solid var(--border);">
-        <div>
-          <div class="font-semibold">{{ inst.effective_name }}</div>
-          <div class="text-xs" style="color: var(--muted);">
-            {{ inst.get_provider_display }} ·
-            Last synced: {% if inst.last_synced_at %}<span class="num">{{ inst.last_synced_at|date:"M j, Y g:i a" }}</span>{% else %}never{% endif %}
-          </div>
+  <div class="rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+    {% for account in accounts %}
+    <div class="flex items-center px-5 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
+      <a href="{% url 'banking:account_detail' account.id %}" class="flex-1 flex items-center justify-between gap-3 min-w-0 pr-3 flex-wrap">
+        <div class="min-w-0">
+          <div class="font-medium truncate">{{ account.effective_name }}</div>
+          <div class="text-xs" style="color: var(--muted);">{{ account.org_name|default:"" }} · {{ account.get_type_display }}</div>
         </div>
-        <div class="flex items-center gap-3">
-          <a href="{% url 'banking:rename_institution' inst.id %}" class="text-sm" style="color: var(--dim);" title="Rename">✎</a>
-          <form method="post" action="{% url 'banking:sync' inst.id %}" class="m-0">
-            {% csrf_token %}
-            <button type="submit" class="text-sm" style="color: var(--muted);">⟳ Sync</button>
-          </form>
-          <a href="{% url 'banking:delete_institution' inst.id %}" class="text-sm" style="color: var(--dim);" title="Delete">🗑</a>
+        <div class="num font-semibold whitespace-nowrap" style="color: {% if account.balance < 0 %}var(--accent-negative){% else %}var(--accent-cash){% endif %};">
+          ${{ account.balance|floatformat:2 }} {{ account.currency }}
         </div>
-      </div>
-      <div>
-        {% for account in inst.accounts.all %}
-        <div class="flex items-center justify-between px-5 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
-          <a href="{% url 'banking:account_detail' account.id %}" class="flex-1 flex items-center justify-between gap-3 min-w-0 pr-3 flex-wrap">
-            <div class="min-w-0">
-              <div class="font-medium truncate">{{ account.effective_name }}</div>
-              <div class="text-xs" style="color: var(--muted);">{{ account.org_name|default:"" }} · {{ account.get_type_display }}</div>
-            </div>
-            <div class="num font-semibold whitespace-nowrap" style="color: {% if account.balance < 0 %}var(--accent-negative){% else %}var(--accent-cash){% endif %};">
-              ${{ account.balance|floatformat:2 }} {{ account.currency }}
-            </div>
-          </a>
-          <a href="{% url 'banking:rename_account' account.id %}" class="text-sm ml-3" style="color: var(--dim);" title="Rename">✎</a>
-          <a href="{% url 'banking:delete_account' account.id %}" class="text-sm ml-2" style="color: var(--dim);" title="Delete">🗑</a>
-        </div>
-        {% empty %}
-        <div class="px-5 py-3 text-sm" style="color: var(--muted);">No accounts returned yet — try syncing.</div>
-        {% endfor %}
-      </div>
+      </a>
+      <a href="{% url 'banking:rename_account' account.id %}" class="text-sm ml-3" style="color: var(--dim);" title="Rename">✎</a>
+      <a href="{% url 'banking:delete_account' account.id %}" class="text-sm ml-2" style="color: var(--dim);" title="Delete">🗑</a>
     </div>
     {% endfor %}
   </div>

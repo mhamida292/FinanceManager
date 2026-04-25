@@ -11,12 +11,13 @@ from .services import link_institution, sync_institution
 
 @login_required
 def banks_list(request):
-    institutions = (
-        Institution.objects
+    accounts = (
+        Account.objects
         .for_user(request.user)
-        .prefetch_related("accounts")
+        .select_related("institution")
+        .order_by("institution__display_name", "institution__name", "display_name", "name")
     )
-    return render(request, "banking/banks_list.html", {"institutions": institutions})
+    return render(request, "banking/banks_list.html", {"accounts": accounts})
 
 
 @login_required

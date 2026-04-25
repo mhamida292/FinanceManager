@@ -37,16 +37,24 @@ def bob_client(bob):
 def test_banks_list_empty(alice_client):
     response = alice_client.get(reverse("banking:list"))
     assert response.status_code == 200
-    assert b"No banks linked yet" in response.content
+    assert b"No accounts yet" in response.content
 
 
-def test_banks_list_shows_only_own_institutions(alice, bob, alice_client):
-    Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
-    Institution.objects.create(user=bob, name="Bob Bank", access_url="https://bob.example")
+def test_banks_list_shows_only_own_accounts(alice, bob, alice_client):
+    alice_inst = Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
+    bob_inst = Institution.objects.create(user=bob, name="Bob Bank", access_url="https://bob.example")
+    Account.objects.create(
+        institution=alice_inst, name="Alice Checking", type="checking",
+        balance=Decimal("100.00"), external_id="A-1",
+    )
+    Account.objects.create(
+        institution=bob_inst, name="Bob Savings", type="savings",
+        balance=Decimal("200.00"), external_id="B-1",
+    )
 
     response = alice_client.get(reverse("banking:list"))
-    assert b"Alice Bank" in response.content
-    assert b"Bob Bank" not in response.content
+    assert b"Alice Checking" in response.content
+    assert b"Bob Savings" not in response.content
 
 
 def test_account_detail_hidden_from_other_user(alice, bob, bob_client):
