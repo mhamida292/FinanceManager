@@ -1,29 +1,37 @@
 {% extends "base.html" %}
 {% block title %}Sign in{% endblock %}
-{% block content %}
-<div class="max-w-sm mx-auto mt-20">
-  <h1 class="text-2xl font-bold text-emerald-400 mb-6">Sign in</h1>
-  <form method="post" class="space-y-4">
-    {% csrf_token %}
-    {% if form.non_field_errors %}
-      <div class="bg-red-900/40 border border-red-700 text-red-200 p-3 rounded text-sm">
-        {{ form.non_field_errors }}
+{% block anonymous_content %}
+<div class="min-h-screen flex items-center justify-center p-6">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <div class="font-bold tracking-widest text-2xl" style="color: var(--accent-positive);">○ FINANCE</div>
+      <div class="text-sm mt-2" style="color: var(--muted);">momajlab</div>
+    </div>
+    <form method="post" class="space-y-4 p-6 rounded-lg border" style="background: var(--surface); border-color: var(--border);">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="border p-3 rounded text-sm" style="background: var(--tint-lia); border-color: var(--accent-lia); color: var(--accent-lia);">
+          {{ form.non_field_errors }}
+        </div>
+      {% endif %}
+      <div>
+        <label class="block text-xs uppercase tracking-wider mb-1" style="color: var(--muted);" for="id_username">Username</label>
+        <input id="id_username" name="username" type="text" autocomplete="username" required
+               class="w-full px-3 py-2 rounded border outline-none focus:ring-2"
+               style="background: var(--bg); border-color: var(--border); color: var(--text);">
       </div>
-    {% endif %}
-    <div>
-      <label class="block text-sm text-slate-400 mb-1" for="id_username">Username</label>
-      <input id="id_username" name="username" type="text" autocomplete="username" required
-             class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 focus:outline-none focus:border-emerald-500">
-    </div>
-    <div>
-      <label class="block text-sm text-slate-400 mb-1" for="id_password">Password</label>
-      <input id="id_password" name="password" type="password" autocomplete="current-password" required
-             class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 focus:outline-none focus:border-emerald-500">
-    </div>
-    <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2 rounded">
-      Sign in
-    </button>
-    <input type="hidden" name="next" value="{{ next }}">
-  </form>
+      <div>
+        <label class="block text-xs uppercase tracking-wider mb-1" style="color: var(--muted);" for="id_password">Password</label>
+        <input id="id_password" name="password" type="password" autocomplete="current-password" required
+               class="w-full px-3 py-2 rounded border outline-none focus:ring-2"
+               style="background: var(--bg); border-color: var(--border); color: var(--text);">
+      </div>
+      <button type="submit" class="w-full py-2 rounded font-semibold"
+              style="background: var(--accent-positive); color: var(--bg);">
+        Sign in
+      </button>
+      <input type="hidden" name="next" value="{{ next }}">
+    </form>
+  </div>
 </div>
 {% endblock %}
