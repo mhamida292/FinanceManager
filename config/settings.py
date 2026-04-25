@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "apps.liabilities",
     "apps.dashboard",
     "apps.providers",
+    "apps.exports",
 ]
 
 MIDDLEWARE = [
