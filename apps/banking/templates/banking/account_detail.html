@@ -51,7 +51,10 @@
           <td class="px-4 py-2 num text-xs" style="color: var(--muted);">
             {{ tx.posted_at|date:"M j, Y" }}{% if tx.pending %} <span style="color: var(--accent-assets);">·pending</span>{% endif %}
           </td>
-          <td class="px-4 py-2 truncate">{{ tx.payee|default:tx.description }}</td>
+          <td class="px-4 py-2 truncate">
+            {{ tx.effective_payee }}
+            <a href="{% url 'banking:rename_transaction' tx.id %}" class="text-xs ml-1" style="color: var(--dim);" title="Rename">✎</a>
+          </td>
           <td class="px-4 py-2 text-xs truncate" style="color: var(--muted);">{{ tx.memo|default:"" }}</td>
           <td class="px-4 py-2 text-right num font-semibold"
               style="color: {% if tx.amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
@@ -68,7 +71,10 @@
     {% for tx in transactions %}
     <div class="px-4 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
       <div class="flex items-baseline justify-between gap-3">
-        <div class="font-medium truncate min-w-0">{{ tx.payee|default:tx.description }}</div>
+        <div class="font-medium truncate min-w-0">
+          {{ tx.effective_payee }}
+          <a href="{% url 'banking:rename_transaction' tx.id %}" class="text-xs ml-1" style="color: var(--dim);" title="Rename">✎</a>
+        </div>
         <div class="num font-semibold whitespace-nowrap" style="color: {% if tx.amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
           {{ tx.amount|money:"signed" }}
         </div>

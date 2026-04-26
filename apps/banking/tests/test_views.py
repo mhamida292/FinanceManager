@@ -290,3 +290,22 @@ def test_rename_transaction_forbidden_for_other_user(alice, bob, bob_client):
     assert response.status_code == 404
     tx.refresh_from_db()
     assert tx.display_name == ""
+
+
+def test_transactions_list_shows_rename_link_and_effective_payee(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
+    account = Account.objects.create(
+        institution=inst, name="Alice Checking", type="checking",
+        balance=Decimal("100.00"), external_id="A-1",
+    )
+    tx = Transaction.objects.create(
+        account=account,
+        posted_at=datetime(2026, 1, 1, tzinfo=dt_tz.utc),
+        amount=Decimal("-12.34"), description="DESC", payee="ProviderPayee",
+        display_name="My Custom Label", external_id="t-1",
+    )
+    response = alice_client.get(reverse("transactions"))
+    rename_url = reverse("banking:rename_transaction", args=[tx.id])
+    assert rename_url.encode() in response.content
+    assert b"My Custom Label" in response.content
+    assert b"ProviderPayee" not in response.content
