@@ -154,3 +154,25 @@ def test_transaction_effective_payee_precedence():
     assert tx_payee_only.effective_payee == "PAYEE"
     assert tx_desc_only.effective_payee == "DESC"
     assert tx_empty.effective_payee == ""
+
+
+@pytest.mark.django_db
+def test_sync_does_not_overwrite_transaction_rename():
+    """After a user renames a transaction, subsequent syncs preserve the display_name."""
+    user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")
+    inst = link_institution(
+        user=user, setup_token="base64token",
+        display_name="Main", provider_name="fake",
+    )
+    tx = Transaction.objects.get(account__institution=inst, external_id="TXN-1")
+    tx.display_name = "Daily latte"
+    tx.save(update_fields=["display_name"])
+
+    sync_institution(inst)
+
+    tx.refresh_from_db()
+    assert tx.display_name == "Daily latte"
+    assert tx.effective_payee == "Daily latte"
+    # Provider-sourced fields stay current
+    assert tx.payee == "Cafe"
+    assert tx.description == "Coffee"
