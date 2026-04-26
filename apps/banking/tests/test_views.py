@@ -226,3 +226,67 @@ def test_transactions_pagination(alice, alice_client):
     response2 = alice_client.get(reverse("transactions"), {"page": 2})
     assert response2.context["page_obj"].number == 2
     assert len(response2.context["page_obj"].object_list) == 10
+
+
+def test_rename_transaction_persists_display_name(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
+    account = Account.objects.create(
+        institution=inst, name="Alice Checking", type="checking",
+        balance=Decimal("100.00"), external_id="A-1",
+    )
+    tx = Transaction.objects.create(
+        account=account,
+        posted_at=datetime(2026, 1, 1, tzinfo=dt_tz.utc),
+        amount=Decimal("-12.34"), description="AMZN MKTP US*A1B2C3", payee="",
+        external_id="t-1",
+    )
+    response = alice_client.post(
+        reverse("banking:rename_transaction", args=[tx.id]),
+        {"display_name": "Amazon — coffee mug"},
+    )
+    assert response.status_code == 302
+    tx.refresh_from_db()
+    assert tx.display_name == "Amazon — coffee mug"
+    assert tx.effective_payee == "Amazon — coffee mug"
+
+
+def test_rename_transaction_blank_restores_provider_payee(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
+    account = Account.objects.create(
+        institution=inst, name="Alice Checking", type="checking",
+        balance=Decimal("100.00"), external_id="A-1",
+    )
+    tx = Transaction.objects.create(
+        account=account,
+        posted_at=datetime(2026, 1, 1, tzinfo=dt_tz.utc),
+        amount=Decimal("-12.34"), description="DESC", payee="PAYEE",
+        display_name="Old Custom", external_id="t-1",
+    )
+    alice_client.post(
+        reverse("banking:rename_transaction", args=[tx.id]),
+        {"display_name": ""},
+    )
+    tx.refresh_from_db()
+    assert tx.display_name == ""
+    assert tx.effective_payee == "PAYEE"
+
+
+def test_rename_transaction_forbidden_for_other_user(alice, bob, bob_client):
+    inst = Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
+    account = Account.objects.create(
+        institution=inst, name="Alice Checking", type="checking",
+        balance=Decimal("100.00"), external_id="A-1",
+    )
+    tx = Transaction.objects.create(
+        account=account,
+        posted_at=datetime(2026, 1, 1, tzinfo=dt_tz.utc),
+        amount=Decimal("-12.34"), description="DESC", payee="PAYEE",
+        external_id="t-1",
+    )
+    response = bob_client.post(
+        reverse("banking:rename_transaction", args=[tx.id]),
+        {"display_name": "Pwned"},
+    )
+    assert response.status_code == 404
+    tx.refresh_from_db()
+    assert tx.display_name == ""

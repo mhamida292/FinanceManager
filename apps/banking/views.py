@@ -9,6 +9,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
 from .models import Account, Institution, Transaction
@@ -30,6 +31,18 @@ def _page_window(current: int, total: int, edge: int = 1, around: int = 2) -> li
         out.append(p)
         prev = p
     return out
+
+
+def _safe_back(request, default: str) -> str:
+    """Return the Referer URL if it's same-origin, else `default`. Used so rename can
+    return to the page the user came from without enabling open-redirects."""
+    referer = request.META.get("HTTP_REFERER", "")
+    allowed_hosts = {request.get_host()}
+    if referer and url_has_allowed_host_and_scheme(
+        referer, allowed_hosts=allowed_hosts, require_https=request.is_secure()
+    ):
+        return referer
+    return default
 
 
 @login_required
@@ -126,6 +139,28 @@ def rename_account(request, account_id):
         "cancel_url": reverse("banking:account_detail", args=[account.id]),
         "current_value": account.display_name,
         "fallback_value": account.name,
+    })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def rename_transaction(request, transaction_id):
+    transaction = get_object_or_404(
+        Transaction.objects.for_user(request.user), pk=transaction_id
+    )
+    fallback = transaction.payee or transaction.description
+    default_redirect = reverse("transactions")
+    if request.method == "POST":
+        transaction.display_name = request.POST.get("display_name", "").strip()
+        transaction.save(update_fields=["display_name"])
+        messages.success(request, f'Renamed to "{transaction.effective_payee}".')
+        return HttpResponseRedirect(_safe_back(request, default=default_redirect))
+    return render(request, "banking/rename_form.html", {
+        "subject": "transaction",
+        "object": transaction,
+        "cancel_url": _safe_back(request, default=default_redirect),
+        "current_value": transaction.display_name,
+        "fallback_value": fallback,
     })
 
 
