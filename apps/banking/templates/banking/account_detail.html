@@ -2,7 +2,11 @@
 {% load money %}
 {% block title %}{{ account.effective_name }}{% endblock %}
 {% block content %}
-<a href="{% url 'banking:list' %}" class="text-sm" style="color: var(--muted);">← Banks</a>
+{% if account.type == "credit" or account.type == "loan" %}
+<a href="{% url 'liabilities:list' %}" class="text-sm" style="color: var(--muted);">← Liabilities</a>
+{% else %}
+<a href="{% url 'banking:list' %}" class="text-sm" style="color: var(--muted);">← Cash</a>
+{% endif %}
 
 {% if messages %}
   {% for message in messages %}

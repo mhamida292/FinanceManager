@@ -414,6 +414,26 @@ def test_cash_list_excludes_credit_and_loan(alice, alice_client):
     assert b"MyLoan" not in response.content
 
 
+def test_account_detail_back_link_credit_goes_to_liabilities(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="B", access_url="https://x")
+    credit = Account.objects.create(institution=inst, name="MyVisa", type="credit",
+                                    balance=Decimal("500"), external_id="A-1")
+    response = alice_client.get(reverse("banking:account_detail", args=[credit.id]))
+    assert response.status_code == 200
+    assert reverse("liabilities:list").encode() in response.content
+    assert b"\xe2\x86\x90 Liabilities" in response.content
+
+
+def test_account_detail_back_link_checking_goes_to_cash(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="B", access_url="https://x")
+    checking = Account.objects.create(institution=inst, name="MyChecking", type="checking",
+                                       balance=Decimal("100"), external_id="A-1")
+    response = alice_client.get(reverse("banking:account_detail", args=[checking.id]))
+    assert response.status_code == 200
+    assert reverse("banking:list").encode() in response.content
+    assert b"\xe2\x86\x90 Cash" in response.content
+
+
 def test_cash_list_includes_savings_and_other(alice, alice_client):
     inst = Institution.objects.create(user=alice, name="B", access_url="https://x")
     Account.objects.create(institution=inst, name="MySavings", type="savings",
