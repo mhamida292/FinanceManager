@@ -33,16 +33,20 @@ def _page_window(current: int, total: int, edge: int = 1, around: int = 2) -> li
     return out
 
 
-def _safe_back(request, default: str) -> str:
-    """Return the Referer URL if it's same-origin, else `default`. Used so rename can
-    return to the page the user came from without enabling open-redirects."""
-    referer = request.META.get("HTTP_REFERER", "")
-    allowed_hosts = {request.get_host()}
-    if referer and url_has_allowed_host_and_scheme(
-        referer, allowed_hosts=allowed_hosts, require_https=request.is_secure()
+def _safe_url(url: str, request, default: str) -> str:
+    """Return `url` if it's same-origin and valid; otherwise `default`. Used to
+    validate user-supplied 'next' params or Referer headers without enabling
+    open-redirects."""
+    if url and url_has_allowed_host_and_scheme(
+        url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
     ):
-        return referer
+        return url
     return default
+
+
+def _safe_back(request, default: str) -> str:
+    """Return the Referer URL if it's same-origin, else `default`."""
+    return _safe_url(request.META.get("HTTP_REFERER", ""), request, default)
 
 
 @login_required
@@ -154,11 +158,13 @@ def rename_transaction(request, transaction_id):
         transaction.display_name = request.POST.get("display_name", "").strip()
         transaction.save(update_fields=["display_name"])
         messages.success(request, f'Renamed to "{transaction.effective_payee}".')
-        return HttpResponseRedirect(_safe_back(request, default=default_redirect))
+        return HttpResponseRedirect(_safe_url(request.POST.get("next", ""), request, default_redirect))
+    back_url = _safe_back(request, default=default_redirect)
     return render(request, "banking/rename_form.html", {
         "subject": "transaction",
         "object": transaction,
-        "cancel_url": _safe_back(request, default=default_redirect),
+        "cancel_url": back_url,
+        "back_url": back_url,
         "current_value": transaction.display_name,
         "fallback_value": fallback,
     })

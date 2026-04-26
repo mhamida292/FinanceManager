@@ -10,6 +10,7 @@
 
   <form method="post" class="space-y-4">
     {% csrf_token %}
+    {% if back_url %}<input type="hidden" name="next" value="{{ back_url }}">{% endif %}
     <div>
       <label class="block text-sm mb-1" style="color: var(--muted);" for="id_display_name">Display name</label>
       <input id="id_display_name" name="display_name" type="text"

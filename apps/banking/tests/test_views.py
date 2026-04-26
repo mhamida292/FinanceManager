@@ -292,6 +292,68 @@ def test_rename_transaction_forbidden_for_other_user(alice, bob, bob_client):
     assert tx.display_name == ""
 
 
+def test_rename_transaction_redirects_to_next_param(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
+    account = Account.objects.create(
+        institution=inst, name="Alice Checking", type="checking",
+        balance=Decimal("100.00"), external_id="A-1",
+    )
+    tx = Transaction.objects.create(
+        account=account,
+        posted_at=datetime(2026, 1, 1, tzinfo=dt_tz.utc),
+        amount=Decimal("-12.34"), description="DESC", payee="PAYEE",
+        external_id="t-1",
+    )
+    target = reverse("banking:account_detail", args=[account.id])
+    response = alice_client.post(
+        reverse("banking:rename_transaction", args=[tx.id]),
+        {"display_name": "X", "next": target},
+    )
+    assert response.status_code == 302
+    assert response["Location"] == target
+
+
+def test_rename_transaction_rejects_external_next(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
+    account = Account.objects.create(
+        institution=inst, name="Alice Checking", type="checking",
+        balance=Decimal("100.00"), external_id="A-1",
+    )
+    tx = Transaction.objects.create(
+        account=account,
+        posted_at=datetime(2026, 1, 1, tzinfo=dt_tz.utc),
+        amount=Decimal("-12.34"), description="DESC", payee="PAYEE",
+        external_id="t-1",
+    )
+    response = alice_client.post(
+        reverse("banking:rename_transaction", args=[tx.id]),
+        {"display_name": "X", "next": "https://evil.example/path"},
+    )
+    assert response.status_code == 302
+    assert response["Location"] == reverse("transactions")
+
+
+def test_rename_transaction_get_embeds_back_url_from_referer(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
+    account = Account.objects.create(
+        institution=inst, name="Alice Checking", type="checking",
+        balance=Decimal("100.00"), external_id="A-1",
+    )
+    tx = Transaction.objects.create(
+        account=account,
+        posted_at=datetime(2026, 1, 1, tzinfo=dt_tz.utc),
+        amount=Decimal("-12.34"), description="DESC", payee="PAYEE",
+        external_id="t-1",
+    )
+    target = reverse("banking:account_detail", args=[account.id])
+    response = alice_client.get(
+        reverse("banking:rename_transaction", args=[tx.id]),
+        HTTP_REFERER="http://testserver" + target,
+    )
+    assert response.status_code == 200
+    assert f'name="next" value="http://testserver{target}"'.encode() in response.content
+
+
 def test_transactions_list_shows_rename_link_and_effective_payee(alice, alice_client):
     inst = Institution.objects.create(user=alice, name="Alice Bank", access_url="https://alice.example")
     account = Account.objects.create(
