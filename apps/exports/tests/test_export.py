@@ -100,3 +100,19 @@ def test_export_requires_login():
     response = c.get(reverse("exports:xlsx"))
     assert response.status_code == 302
     assert "/login/" in response["Location"]
+
+
+def test_export_payee_column_uses_renamed_label(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="Bank", access_url="https://x")
+    acc = Account.objects.create(institution=inst, name="Checking", type="checking",
+                                 balance=Decimal("100"), external_id="A-1")
+    Transaction.objects.create(
+        account=acc, posted_at=date(2026, 4, 1),
+        amount=Decimal("-50"), description="AMZN MKTP US*A1B2", payee="",
+        display_name="Amazon coffee mug", external_id="t-1",
+    )
+    response = alice_client.get(reverse("exports:xlsx"))
+    wb = _load(response)
+    ws = wb["Checking"]
+    # Header row 1; first data row 2; payee is column 2.
+    assert ws.cell(row=2, column=2).value == "Amazon coffee mug"

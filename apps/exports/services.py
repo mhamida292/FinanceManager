@@ -59,7 +59,7 @@ def build_workbook(*, user) -> Workbook:
         for tx in rows:
             ws.append([
                 _naive(tx.posted_at),
-                tx.payee or tx.description or "",
+                tx.effective_payee,
                 tx.memo or "",
                 float(tx.amount),
                 "yes" if tx.pending else "",
