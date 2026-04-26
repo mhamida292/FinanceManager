@@ -217,6 +217,26 @@ def edit_account(request, account_id):
 
 @login_required
 @require_http_methods(["GET", "POST"])
+def rename_investment_account(request, account_id):
+    account = get_object_or_404(
+        InvestmentAccount.objects.for_user(request.user), pk=account_id
+    )
+    if request.method == "POST":
+        account.display_name = request.POST.get("display_name", "").strip()
+        account.save(update_fields=["display_name"])
+        messages.success(request, f'Renamed to "{account.effective_name}".')
+        return HttpResponseRedirect(reverse("settings"))
+    return render(request, "banking/rename_form.html", {
+        "subject": "investment account",
+        "object": account,
+        "cancel_url": reverse("settings"),
+        "current_value": account.display_name,
+        "fallback_value": account.name,
+    })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
 def delete_holding(request, holding_id):
     holding = get_object_or_404(Holding.objects.for_user(request.user), pk=holding_id)
     account_id = holding.investment_account_id

@@ -293,3 +293,44 @@ def test_edit_investment_account_forbidden_for_other_user(alice, bob, bob_client
         "name": "pwned", "broker": "X", "cash_balance": "0",
     })
     assert r.status_code == 404
+
+
+def test_rename_investment_account_persists_display_name(alice, alice_client):
+    acc = InvestmentAccount.objects.create(
+        user=alice, source="manual", broker="Fidelity", name="Alice 401k",
+    )
+    response = alice_client.post(
+        reverse("investments:rename_account", args=[acc.id]),
+        {"display_name": "Old Job 401k"},
+    )
+    assert response.status_code == 302
+    acc.refresh_from_db()
+    assert acc.display_name == "Old Job 401k"
+    assert acc.effective_name == "Old Job 401k"
+
+
+def test_rename_investment_account_blank_restores_provider_name(alice, alice_client):
+    acc = InvestmentAccount.objects.create(
+        user=alice, source="manual", broker="Fidelity", name="Alice 401k",
+        display_name="Old Custom Name",
+    )
+    alice_client.post(
+        reverse("investments:rename_account", args=[acc.id]),
+        {"display_name": ""},
+    )
+    acc.refresh_from_db()
+    assert acc.display_name == ""
+    assert acc.effective_name == "Alice 401k"
+
+
+def test_rename_investment_account_forbidden_for_other_user(alice, bob, bob_client):
+    acc = InvestmentAccount.objects.create(
+        user=alice, source="manual", broker="Fidelity", name="Alice 401k",
+    )
+    response = bob_client.post(
+        reverse("investments:rename_account", args=[acc.id]),
+        {"display_name": "Pwned"},
+    )
+    assert response.status_code == 404
+    acc.refresh_from_db()
+    assert acc.display_name == ""
