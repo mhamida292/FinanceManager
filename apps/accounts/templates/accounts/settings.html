@@ -17,7 +17,7 @@
 </div>
 
 <div class="flex items-center justify-between mb-3">
-  <h2 class="text-lg font-semibold">Bank institutions</h2>
+  <h2 class="text-lg font-semibold">External connections</h2>
   <a href="{% url 'banking:link' %}" class="font-bold px-3 py-1.5 rounded text-sm" style="background: var(--accent-positive); color: var(--bg);">+ Link account</a>
 </div>
 {% if not institutions %}
@@ -25,40 +25,74 @@
 {% else %}
   <div class="rounded border overflow-hidden mb-6" style="background: var(--surface); border-color: var(--border);">
     {% for inst in institutions %}
-    <div class="flex items-center justify-between px-5 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
-      <div>
-        <div class="font-medium">{{ inst.effective_name }}</div>
-        <div class="text-xs" style="color: var(--muted);">
-          Last synced: {% if inst.last_synced_at %}<span class="num">{{ inst.last_synced_at|date:"M j, Y g:i a" }}</span>{% else %}never{% endif %}
+    <div class="px-5 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
+      {# Connection row #}
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="font-medium">{{ inst.effective_name }}</div>
+          <div class="text-xs" style="color: var(--muted);">
+            SimpleFIN · Last synced: {% if inst.last_synced_at %}<span class="num">{{ inst.last_synced_at|date:"M j, Y g:i a" }}</span>{% else %}never{% endif %}
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <form method="post" action="{% url 'banking:sync' inst.id %}" class="m-0">
+            {% csrf_token %}
+            <button type="submit" class="text-sm" style="color: var(--muted);">⟳ Bank sync</button>
+          </form>
+          <a href="{% url 'banking:rename_institution' inst.id %}" class="text-sm" style="color: var(--dim);">✎</a>
+          <a href="{% url 'banking:delete_institution' inst.id %}" class="text-sm" style="color: var(--dim);">🗑</a>
         </div>
       </div>
-      <div class="flex items-center gap-3">
-        <form method="post" action="{% url 'banking:sync' inst.id %}" class="m-0">
-          {% csrf_token %}
-          <button type="submit" class="text-sm" style="color: var(--muted);">⟳ Bank sync</button>
-        </form>
-        <a href="{% url 'banking:rename_institution' inst.id %}" class="text-sm" style="color: var(--dim);">✎</a>
-        <a href="{% url 'banking:delete_institution' inst.id %}" class="text-sm" style="color: var(--dim);">🗑</a>
+
+      {# Child bank accounts #}
+      {% for acc in inst.accounts.all %}
+      <div class="flex items-center justify-between pl-6 mt-2 text-sm">
+        <div class="min-w-0">
+          <span style="color: var(--muted);">↳</span>
+          <span class="font-medium">{{ acc.effective_name }}</span>
+          <span class="text-xs ml-1" style="color: var(--dim);">{{ acc.get_type_display }}</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <a href="{% url 'banking:rename_account' acc.id %}" class="text-sm" style="color: var(--dim);" title="Rename">✎</a>
+          <a href="{% url 'banking:delete_account' acc.id %}" class="text-sm" style="color: var(--dim);" title="Delete">🗑</a>
+        </div>
       </div>
+      {% endfor %}
+
+      {# Child SimpleFIN-sourced investment accounts #}
+      {% for inv in inst.investment_accounts.all %}
+      <div class="flex items-center justify-between pl-6 mt-2 text-sm">
+        <div class="min-w-0">
+          <span style="color: var(--muted);">↳</span>
+          <span class="font-medium">{{ inv.effective_name }}</span>
+          <span class="text-xs ml-1" style="color: var(--dim);">Investment{% if inv.broker %} · {{ inv.broker }}{% endif %}</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <a href="{% url 'investments:rename_account' inv.id %}" class="text-sm" style="color: var(--dim);" title="Rename">✎</a>
+          <a href="{% url 'investments:delete_account' inv.id %}" class="text-sm" style="color: var(--dim);" title="Delete">🗑</a>
+        </div>
+      </div>
+      {% endfor %}
     </div>
     {% endfor %}
   </div>
 {% endif %}
 
-<h2 class="text-lg font-semibold mb-3">SimpleFIN-linked investment accounts</h2>
-{% if not investment_accounts %}
-  <p class="text-sm mb-6" style="color: var(--muted);">None.</p>
+<h2 class="text-lg font-semibold mb-3">Manual investment accounts</h2>
+{% if not manual_investment_accounts %}
+  <p class="text-sm mb-6" style="color: var(--muted);">None. Add one on the <a href="{% url 'investments:list' %}" class="underline" style="color: var(--accent-positive);">Investments</a> page.</p>
 {% else %}
   <div class="rounded border overflow-hidden mb-6" style="background: var(--surface); border-color: var(--border);">
-    {% for acc in investment_accounts %}
+    {% for inv in manual_investment_accounts %}
     <div class="flex items-center justify-between px-5 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
       <div>
-        <div class="font-medium">{{ acc.effective_name }}</div>
-        <div class="text-xs" style="color: var(--muted);">
-          {{ acc.broker }} · Last synced: {% if acc.last_synced_at %}<span class="num">{{ acc.last_synced_at|date:"M j, Y g:i a" }}</span>{% else %}never{% endif %}
-        </div>
+        <div class="font-medium">{{ inv.effective_name }}</div>
+        <div class="text-xs" style="color: var(--muted);">{% if inv.broker %}{{ inv.broker }}{% else %}Manual entry{% endif %}</div>
       </div>
-      <a href="{% url 'investments:delete_account' acc.id %}" class="text-sm" style="color: var(--dim);">🗑</a>
+      <div class="flex items-center gap-3">
+        <a href="{% url 'investments:rename_account' inv.id %}" class="text-sm" style="color: var(--dim);" title="Rename">✎</a>
+        <a href="{% url 'investments:delete_account' inv.id %}" class="text-sm" style="color: var(--dim);" title="Delete">🗑</a>
+      </div>
     </div>
     {% endfor %}
   </div>

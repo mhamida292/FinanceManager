@@ -23,11 +23,15 @@ class SettingsView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
-        ctx["institutions"] = Institution.objects.for_user(user).order_by("-last_synced_at")
-        ctx["investment_accounts"] = (
-            InvestmentAccount.objects.for_user(user)
-            .filter(source="simplefin")
+        ctx["institutions"] = (
+            Institution.objects.for_user(user)
+            .prefetch_related("accounts", "investment_accounts")
             .order_by("-last_synced_at")
+        )
+        ctx["manual_investment_accounts"] = (
+            InvestmentAccount.objects.for_user(user)
+            .filter(source="manual")
+            .order_by("name")
         )
         ctx["scraped_assets"] = (
             Asset.objects.for_user(user)
