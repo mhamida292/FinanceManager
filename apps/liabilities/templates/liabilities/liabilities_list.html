@@ -29,12 +29,20 @@
     <div class="flex items-center justify-between px-5 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
       {% if row.source == 'bank' %}
         <a href="{% url 'banking:account_detail' row.bank_account_id %}" class="flex-1 min-w-0 pr-3">
-          <div class="font-medium">{{ row.name }}</div>
+          <div class="font-medium">
+            {{ row.name }}
+            <span class="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded ml-2"
+                  style="background: var(--tint-lia); color: var(--accent-lia);">{{ row.type_label }}</span>
+          </div>
           <div class="text-xs" style="color: var(--muted);">🔗 from linked bank · view transactions →</div>
         </a>
       {% else %}
         <div class="flex-1 min-w-0 pr-3">
-          <div class="font-medium">{{ row.name }}</div>
+          <div class="font-medium">
+            {{ row.name }}
+            <span class="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded ml-2"
+                  style="background: var(--tint-lia); color: var(--accent-lia);">{{ row.type_label }}</span>
+          </div>
           <div class="text-xs" style="color: var(--muted);">✎ manual</div>
         </div>
       {% endif %}

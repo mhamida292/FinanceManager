@@ -71,3 +71,19 @@ def test_anonymous_redirects():
     r = c.get(reverse("liabilities:list"))
     assert r.status_code == 302
     assert "/login/" in r["Location"]
+
+
+def test_liabilities_list_renders_type_pills(alice, alice_client):
+    from apps.banking.models import Institution, Account
+    inst = Institution.objects.create(user=alice, name="Bank", access_url="https://x")
+    Account.objects.create(institution=inst, name="Visa", type="credit",
+                           balance=Decimal("500"), external_id="V1")
+    Account.objects.create(institution=inst, name="CarLoan", type="loan",
+                           balance=Decimal("12000"), external_id="L1")
+    Liability.objects.create(user=alice, name="Student loan", balance=Decimal("25000"))
+
+    response = alice_client.get(reverse("liabilities:list"))
+    assert response.status_code == 200
+    assert b"Credit" in response.content
+    assert b"Loan" in response.content
+    assert b"Manual" in response.content

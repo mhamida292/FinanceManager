@@ -37,3 +37,20 @@ def test_total_liabilities_isolates_users():
     Liability.objects.create(user=b, name="B", balance=Decimal("200"))
     assert total_liabilities(a) == Decimal("100")
     assert total_liabilities(b) == Decimal("200")
+
+
+@pytest.mark.django_db
+def test_liability_row_includes_type_label():
+    user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")
+    inst = Institution.objects.create(user=user, name="Bank", access_url="https://x")
+    Account.objects.create(institution=inst, name="Visa", type="credit",
+                           balance=Decimal("500"), external_id="V1")
+    Account.objects.create(institution=inst, name="CarLoan", type="loan",
+                           balance=Decimal("12000"), external_id="L1")
+    Liability.objects.create(user=user, name="Student loan", balance=Decimal("25000"))
+
+    rows = liabilities_for(user)
+    by_name = {r.name: r for r in rows}
+    assert by_name["Visa"].type_label == "Credit"
+    assert by_name["CarLoan"].type_label == "Loan"
+    assert by_name["Student loan"].type_label == "Manual"

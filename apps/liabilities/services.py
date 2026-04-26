@@ -12,6 +12,7 @@ class LiabilityRow:
     name: str
     balance: Decimal
     source: str           # "bank" | "manual"
+    type_label: str       # "Credit" | "Loan" | "Manual"
     edit_url: str | None  # set for manual; None for bank-sourced
     bank_account_id: int | None = None
     liability_id: int | None = None
@@ -22,12 +23,14 @@ def liabilities_for(user) -> list[LiabilityRow]:
     Sorted by descending balance."""
     rows: list[LiabilityRow] = []
 
+    type_to_label = {"credit": "Credit", "loan": "Loan"}
     for acc in Account.objects.for_user(user).filter(type__in=["credit", "loan"]):
         # For credit cards SimpleFIN reports balance as a positive number = what's owed.
         rows.append(LiabilityRow(
             name=acc.effective_name,
             balance=abs(acc.balance),
             source="bank",
+            type_label=type_to_label[acc.type],
             edit_url=None,
             bank_account_id=acc.id,
         ))
@@ -37,6 +40,7 @@ def liabilities_for(user) -> list[LiabilityRow]:
             name=lia.name,
             balance=lia.balance,
             source="manual",
+            type_label="Manual",
             edit_url=None,
             liability_id=lia.id,
         ))
