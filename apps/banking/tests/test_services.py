@@ -120,3 +120,37 @@ def test_sync_does_not_overwrite_user_type_change():
 
     account.refresh_from_db()
     assert account.type == "credit", "Manual type override must survive sync"
+
+
+@pytest.mark.django_db
+def test_transaction_effective_payee_precedence():
+    """display_name overrides payee, payee overrides description, all empty returns ''."""
+    user = User.objects.create_user(username="alice", password="x")
+    inst = Institution.objects.create(user=user, name="Bank", access_url="https://x")
+    acc = Account.objects.create(
+        institution=inst, name="Checking", type="checking",
+        balance=Decimal("0"), external_id="A-1",
+    )
+
+    tx_full = Transaction.objects.create(
+        account=acc, posted_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        amount=Decimal("-1.00"), description="DESC", payee="PAYEE",
+        display_name="MyLabel", external_id="t-1",
+    )
+    tx_payee_only = Transaction.objects.create(
+        account=acc, posted_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+        amount=Decimal("-1.00"), description="DESC", payee="PAYEE", external_id="t-2",
+    )
+    tx_desc_only = Transaction.objects.create(
+        account=acc, posted_at=datetime(2026, 1, 3, tzinfo=timezone.utc),
+        amount=Decimal("-1.00"), description="DESC", payee="", external_id="t-3",
+    )
+    tx_empty = Transaction.objects.create(
+        account=acc, posted_at=datetime(2026, 1, 4, tzinfo=timezone.utc),
+        amount=Decimal("-1.00"), description="", payee="", external_id="t-4",
+    )
+
+    assert tx_full.effective_payee == "MyLabel"
+    assert tx_payee_only.effective_payee == "PAYEE"
+    assert tx_desc_only.effective_payee == "DESC"
+    assert tx_empty.effective_payee == ""

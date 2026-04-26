@@ -98,6 +98,10 @@ class Transaction(models.Model):
     amount = models.DecimalField(max_digits=14, decimal_places=2)
     description = models.CharField(max_length=500, blank=True)
     payee = models.CharField(max_length=200, blank=True)
+    display_name = models.CharField(
+        max_length=200, blank=True, default="",
+        help_text="Optional override shown in the UI. Blank = use payee/description. Never overwritten by sync.",
+    )
     memo = models.CharField(max_length=500, blank=True)
     pending = models.BooleanField(default=False)
     external_id = models.CharField(max_length=200, help_text="Provider's txn ID; upsert key.")
@@ -110,5 +114,9 @@ class Transaction(models.Model):
             models.UniqueConstraint(fields=["account", "external_id"], name="uniq_txn_per_account"),
         ]
 
+    @property
+    def effective_payee(self) -> str:
+        return self.display_name or self.payee or self.description
+
     def __str__(self):
-        return f"{self.posted_at:%Y-%m-%d} {self.amount} {self.payee or self.description}"
+        return f"{self.posted_at:%Y-%m-%d} {self.amount} {self.effective_payee}"
