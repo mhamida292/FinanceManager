@@ -70,7 +70,7 @@
         {% for tx in summary.recent_transactions %}
         <tr style="border-top: 1px solid var(--border);">
           <td class="px-4 py-2 num text-xs" style="color: var(--muted);">{{ tx.posted_at|date:"M d" }}</td>
-          <td class="px-4 py-2 truncate">{{ tx.payee|default:tx.description }}</td>
+          <td class="px-4 py-2 truncate">{{ tx.effective_payee }}</td>
           <td class="px-4 py-2 text-right text-xs" style="color: var(--muted);">{{ tx.account.effective_name }}</td>
           <td class="px-4 py-2 text-right num font-semibold" style="color: {% if tx.amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
             {{ tx.amount|money:"signed" }}
@@ -86,7 +86,7 @@
     {% for tx in summary.recent_transactions %}
     <div class="px-4 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
       <div class="flex items-baseline justify-between gap-3">
-        <div class="font-medium truncate min-w-0">{{ tx.payee|default:tx.description }}</div>
+        <div class="font-medium truncate min-w-0">{{ tx.effective_payee }}</div>
         <div class="num font-semibold whitespace-nowrap" style="color: {% if tx.amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
           {{ tx.amount|money:"signed" }}
         </div>
