@@ -215,7 +215,12 @@ def transactions_list(request):
 
     search = (request.GET.get("q") or "").strip()
     if search:
-        qs = qs.filter(Q(payee__icontains=search) | Q(description__icontains=search) | Q(memo__icontains=search))
+        qs = qs.filter(
+            Q(display_name__icontains=search)
+            | Q(payee__icontains=search)
+            | Q(description__icontains=search)
+            | Q(memo__icontains=search)
+        )
 
     paginator = Paginator(qs, 50)
     page_obj = paginator.get_page(request.GET.get("page"))
