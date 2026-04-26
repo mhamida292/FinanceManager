@@ -54,6 +54,7 @@ def banks_list(request):
     accounts = (
         Account.objects
         .for_user(request.user)
+        .filter(type__in=["checking", "savings", "other"])
         .select_related("institution")
         .order_by("institution__display_name", "institution__name", "display_name", "name")
     )

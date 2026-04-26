@@ -397,3 +397,30 @@ def test_transactions_search_matches_renamed_label(alice, alice_client):
     assert response.status_code == 200
     assert b"Amazon coffee mug" in response.content
     assert b"WHOLE FOODS" not in response.content
+
+
+def test_cash_list_excludes_credit_and_loan(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="B", access_url="https://x")
+    Account.objects.create(institution=inst, name="MyChecking", type="checking",
+                           balance=Decimal("100"), external_id="A-1")
+    Account.objects.create(institution=inst, name="MyVisa", type="credit",
+                           balance=Decimal("500"), external_id="A-2")
+    Account.objects.create(institution=inst, name="MyLoan", type="loan",
+                           balance=Decimal("12000"), external_id="A-3")
+    response = alice_client.get(reverse("banking:list"))
+    assert response.status_code == 200
+    assert b"MyChecking" in response.content
+    assert b"MyVisa" not in response.content
+    assert b"MyLoan" not in response.content
+
+
+def test_cash_list_includes_savings_and_other(alice, alice_client):
+    inst = Institution.objects.create(user=alice, name="B", access_url="https://x")
+    Account.objects.create(institution=inst, name="MySavings", type="savings",
+                           balance=Decimal("100"), external_id="A-1")
+    Account.objects.create(institution=inst, name="MyOther", type="other",
+                           balance=Decimal("100"), external_id="A-2")
+    response = alice_client.get(reverse("banking:list"))
+    assert response.status_code == 200
+    assert b"MySavings" in response.content
+    assert b"MyOther" in response.content
