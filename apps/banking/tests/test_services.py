@@ -157,6 +157,54 @@ def test_transaction_effective_payee_precedence():
 
 
 @pytest.mark.django_db
+def test_display_amount_inverts_sign_for_credit_and_loan_accounts():
+    """Provider APIs report credit-card charges as positive (issuer convention).
+    From the user's perspective a charge is money spent — should display as
+    negative. display_amount inverts the sign for credit and loan accounts only."""
+    user = User.objects.create_user(username="alice", password="x")
+    inst = Institution.objects.create(user=user, name="Bank", access_url="https://x")
+
+    checking = Account.objects.create(
+        institution=inst, name="Checking", type="checking",
+        balance=Decimal("0"), external_id="A-CHK",
+    )
+    credit = Account.objects.create(
+        institution=inst, name="Card", type="credit",
+        balance=Decimal("0"), external_id="A-CC",
+    )
+    loan = Account.objects.create(
+        institution=inst, name="Mortgage", type="loan",
+        balance=Decimal("0"), external_id="A-LN",
+    )
+
+    chk_debit = Transaction.objects.create(
+        account=checking, posted_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        amount=Decimal("-50.00"), external_id="chk-1",
+    )
+    cc_charge = Transaction.objects.create(
+        account=credit, posted_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        amount=Decimal("50.00"), external_id="cc-1",
+    )
+    cc_payment = Transaction.objects.create(
+        account=credit, posted_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+        amount=Decimal("-200.00"), external_id="cc-2",
+    )
+    loan_charge = Transaction.objects.create(
+        account=loan, posted_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        amount=Decimal("1500.00"), external_id="ln-1",
+    )
+
+    # Depository: pass-through.
+    assert chk_debit.display_amount == Decimal("-50.00")
+    # Credit charge (positive in raw) flips to negative.
+    assert cc_charge.display_amount == Decimal("-50.00")
+    # Credit payment (negative in raw) flips to positive.
+    assert cc_payment.display_amount == Decimal("200.00")
+    # Loan accrual flips the same way.
+    assert loan_charge.display_amount == Decimal("-1500.00")
+
+
+@pytest.mark.django_db
 def test_sync_does_not_overwrite_transaction_rename():
     """After a user renames a transaction, subsequent syncs preserve the display_name."""
     user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")

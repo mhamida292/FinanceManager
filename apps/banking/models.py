@@ -118,5 +118,17 @@ class Transaction(models.Model):
     def effective_payee(self) -> str:
         return self.display_name or self.payee or self.description
 
+    @property
+    def display_amount(self):
+        """User-perspective amount. Bank/issuer APIs (Teller, SimpleFIN) report
+        credit card charges as POSITIVE because the issuer's receivable went up.
+        From the cardholder's perspective, a charge is money spent — should
+        show as negative/red. For credit and loan accounts we invert the sign
+        so the user sees: charge = negative (money out), payment = positive
+        (debt reduced)."""
+        if self.account.type in ("credit", "loan"):
+            return -self.amount
+        return self.amount
+
     def __str__(self):
         return f"{self.posted_at:%Y-%m-%d} {self.amount} {self.effective_payee}"

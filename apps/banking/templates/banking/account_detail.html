@@ -61,8 +61,8 @@
           </td>
           <td class="px-4 py-2 text-xs truncate" style="color: var(--muted);">{{ tx.memo|default:"" }}</td>
           <td class="px-4 py-2 text-right num font-semibold"
-              style="color: {% if tx.amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
-            {{ tx.amount|money:"signed" }}
+              style="color: {% if tx.display_amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+            {{ tx.display_amount|money:"signed" }}
           </td>
         </tr>
         {% endfor %}
@@ -79,8 +79,8 @@
           {{ tx.effective_payee }}
           <a href="{% url 'banking:rename_transaction' tx.id %}" class="text-xs ml-1" style="color: var(--dim);" title="Rename">✎</a>
         </div>
-        <div class="num font-semibold whitespace-nowrap" style="color: {% if tx.amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
-          {{ tx.amount|money:"signed" }}
+        <div class="num font-semibold whitespace-nowrap" style="color: {% if tx.display_amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+          {{ tx.display_amount|money:"signed" }}
         </div>
       </div>
       <div class="text-xs mt-0.5" style="color: var(--muted);">

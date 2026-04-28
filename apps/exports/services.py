@@ -61,7 +61,7 @@ def build_workbook(*, user) -> Workbook:
                 _naive(tx.posted_at),
                 tx.effective_payee,
                 tx.memo or "",
-                float(tx.amount),
+                float(tx.display_amount),
                 "yes" if tx.pending else "",
             ])
         # Format amount column as currency
