@@ -21,7 +21,7 @@
   <a href="{% url 'banking:link' %}" class="font-bold px-3 py-1.5 rounded text-sm" style="background: var(--accent-positive); color: var(--bg);">+ Link account</a>
 </div>
 {% if not institutions %}
-  <p class="text-sm mb-6" style="color: var(--muted);">None linked. Click <strong style="color: var(--text);">+ Link account</strong> above to connect a bank via SimpleFIN.</p>
+  <p class="text-sm mb-6" style="color: var(--muted);">None linked. Click <strong style="color: var(--text);">+ Link account</strong> above to connect a bank via Teller or SimpleFIN.</p>
 {% else %}
   <div class="rounded border overflow-hidden mb-6" style="background: var(--surface); border-color: var(--border);">
     {% for inst in institutions %}
@@ -31,7 +31,7 @@
         <div>
           <div class="font-medium">{{ inst.effective_name }}</div>
           <div class="text-xs" style="color: var(--muted);">
-            SimpleFIN · Last synced: {% if inst.last_synced_at %}<span class="num">{{ inst.last_synced_at|date:"M j, Y g:i a" }}</span>{% else %}never{% endif %}
+            {{ inst.get_provider_display }} · Last synced: {% if inst.last_synced_at %}<span class="num">{{ inst.last_synced_at|date:"M j, Y g:i a" }}</span>{% else %}never{% endif %}
           </div>
         </div>
         <div class="flex items-center gap-3">
