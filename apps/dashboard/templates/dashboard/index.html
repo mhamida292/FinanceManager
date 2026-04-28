@@ -21,25 +21,25 @@
 
   <a href="{% url 'banking:list' %}" class="rounded p-4 border block hover:border-opacity-100 transition" style="background: var(--surface); border-color: var(--border);">
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Cash</div>
-    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-cash);">{{ summary.cash|money }}</div>
+    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: {% if summary.cash < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">{{ summary.cash|money }}</div>
     <div class="text-[10px] mt-1" style="color: var(--dim);">{{ summary.cash_account_count }} account{{ summary.cash_account_count|pluralize }}</div>
   </a>
 
   <a href="{% url 'investments:list' %}" class="rounded p-4 border block hover:border-opacity-100 transition" style="background: var(--surface); border-color: var(--border);">
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Investments</div>
-    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-inv);">{{ summary.investments|money }}</div>
+    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: {% if summary.investments < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">{{ summary.investments|money }}</div>
     <div class="text-[10px] mt-1" style="color: var(--dim);">{{ summary.investment_holding_count }} position{{ summary.investment_holding_count|pluralize }}</div>
   </a>
 
   <a href="{% url 'assets:list' %}" class="rounded p-4 border block hover:border-opacity-100 transition" style="background: var(--surface); border-color: var(--border);">
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Assets</div>
-    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-assets);">{{ summary.assets|money }}</div>
+    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: {% if summary.assets < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">{{ summary.assets|money }}</div>
     <div class="text-[10px] mt-1" style="color: var(--dim);">{{ summary.asset_count }} item{{ summary.asset_count|pluralize }}</div>
   </a>
 
   <a href="{% url 'liabilities:list' %}" class="rounded p-4 border block hover:border-opacity-100 transition" style="background: var(--surface); border-color: var(--border);">
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Liabilities</div>
-    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: var(--accent-lia);">{{ summary.liabilities|money:"liability" }}</div>
+    <div class="text-lg sm:text-xl font-bold num mt-1 truncate" style="color: {% if summary.liabilities > 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">{{ summary.liabilities|money:"liability" }}</div>
     <div class="text-[10px] mt-1" style="color: var(--dim);">credit + loans + manual</div>
   </a>
 
