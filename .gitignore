@@ -4,6 +4,10 @@
 *.pem
 *.key
 
+# Teller mTLS certs (also covered by *.pem / *.key but be explicit)
+secrets/teller/*
+!secrets/teller/.gitkeep
+
 # Python
 __pycache__/
 *.py[cod]

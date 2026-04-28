@@ -25,6 +25,7 @@ services:
       - "${WEB_PORT:-8000}:8000"
     volumes:
       - ./backups:/backups
+      - ./secrets/teller:/run/secrets/teller:ro
 
 volumes:
   finance_pgdata:

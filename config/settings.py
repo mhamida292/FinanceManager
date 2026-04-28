@@ -112,3 +112,13 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # ROTATION: changing this key makes every stored access URL unreadable.
 # Back it up separately from POSTGRES backups — keys should not live where ciphertext lives.
 FIELD_ENCRYPTION_KEY = os.environ["FIELD_ENCRYPTION_KEY"]
+
+# --- Teller ---
+# Empty/unset values are tolerated at import time; the TellerProvider will
+# raise at construction time if the user actually tries to link a Teller
+# account without configuring these. Lets the rest of the app boot without
+# Teller credentials (e.g. for SimpleFIN-only deployments).
+TELLER_APPLICATION_ID = os.environ.get("TELLER_APPLICATION_ID", "")
+TELLER_ENVIRONMENT = os.environ.get("TELLER_ENVIRONMENT", "sandbox")
+TELLER_CERT_PATH = os.environ.get("TELLER_CERT_PATH", "")
+TELLER_KEY_PATH = os.environ.get("TELLER_KEY_PATH", "")
