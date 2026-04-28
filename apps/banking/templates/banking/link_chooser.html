@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Link an account{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <h1 class="text-2xl font-bold mb-6">Link an account — pick a provider</h1>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <a href="{% url 'banking:link_teller' %}"
+       class="block p-6 rounded-lg border hover:opacity-90 transition-opacity"
+       style="background: var(--surface); border-color: var(--border); color: var(--text);">
+      <div class="text-lg font-bold mb-2">Teller</div>
+      <p class="text-sm" style="color: var(--muted);">
+        Connect a US bank through a secure popup. Recommended for most accounts.
+        Free up to 100 enrollments.
+      </p>
+    </a>
+    <a href="{% url 'banking:link_simplefin' %}"
+       class="block p-6 rounded-lg border hover:opacity-90 transition-opacity"
+       style="background: var(--surface); border-color: var(--border); color: var(--text);">
+      <div class="text-lg font-bold mb-2">SimpleFIN</div>
+      <p class="text-sm" style="color: var(--muted);">
+        Paste a setup token from SimpleFIN Bridge. Best for investment accounts
+        (Robinhood, Fidelity, etc.).
+      </p>
+    </a>
+  </div>
+  <div class="mt-6">
+    <a href="{% url 'banking:list' %}" class="text-sm" style="color: var(--muted);">← Back to accounts</a>
+  </div>
+</div>
+{% endblock %}

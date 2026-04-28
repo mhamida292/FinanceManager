@@ -1,11 +1,13 @@
+import json
 from datetime import timedelta
 from urllib.parse import urlencode
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
@@ -62,8 +64,14 @@ def banks_list(request):
 
 
 @login_required
-@require_http_methods(["GET", "POST"])
 def link_form(request):
+    """Provider chooser. Routes to /banking/link/simplefin/ or /banking/link/teller/."""
+    return render(request, "banking/link_chooser.html", {})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def link_form_simplefin(request):
     if request.method == "POST":
         setup_token = request.POST.get("setup_token", "").strip()
         display_name = request.POST.get("display_name", "").strip() or "SimpleFIN Account"
