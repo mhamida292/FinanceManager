@@ -11,11 +11,11 @@ class InstitutionQuerySet(UserScopedQuerySet):
 
 
 class Institution(models.Model):
-    """One SimpleFIN Access URL per row. May back multiple Accounts."""
+    """One Access URL or token per row. May back multiple Accounts."""
 
     PROVIDER_CHOICES = [
         ("simplefin", "SimpleFIN"),
-        # ("plaid", "Plaid"),  # future
+        ("teller", "Teller"),
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="institutions")
