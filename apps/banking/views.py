@@ -89,6 +89,42 @@ def link_form_simplefin(request):
 
 
 @login_required
+def link_form_teller(request):
+    return render(request, "banking/link_form_teller.html", {
+        "teller_application_id": settings.TELLER_APPLICATION_ID,
+        "teller_environment": settings.TELLER_ENVIRONMENT,
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def link_form_teller_callback(request):
+    """Receives JSON {access_token, display_name} from the Teller Connect onSuccess
+    callback. Validates and links the institution; returns JSON for the JS to consume."""
+    try:
+        body = json.loads(request.body.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "Invalid JSON body."}, status=400)
+
+    access_token = (body.get("access_token") or "").strip()
+    display_name = (body.get("display_name") or "").strip() or "Teller Account"
+    if not access_token:
+        return JsonResponse({"ok": False, "error": "access_token is required."}, status=400)
+
+    try:
+        link_institution(
+            user=request.user,
+            setup_token=access_token,
+            display_name=display_name,
+            provider_name="teller",
+        )
+    except Exception as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+
+    return JsonResponse({"ok": True, "redirect_url": reverse("banking:list")})
+
+
+@login_required
 @require_http_methods(["POST"])
 def sync_institution_view(request, institution_id):
     institution = get_object_or_404(Institution.objects.for_user(request.user), pk=institution_id)

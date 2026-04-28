@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Connect a bank via Teller{% endblock %}
+{% block content %}
+<div class="max-w-xl mx-auto">
+  <h1 class="text-2xl font-bold mb-4">Connect a bank via Teller</h1>
+  <p class="text-sm mb-6" style="color: var(--muted);">
+    Click "Connect a bank" to launch a secure popup. After authenticating with
+    your bank, you'll be redirected back here and an initial sync will run.
+  </p>
+
+  {% if messages %}
+    {% for message in messages %}
+    <div class="border p-3 rounded text-sm mb-4"
+         style="{% if message.tags == 'error' %}background: var(--tint-lia); border-color: var(--accent-lia); color: var(--accent-lia);{% else %}background: var(--tint-positive); border-color: var(--accent-positive); color: var(--accent-positive);{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="space-y-4">
+    <div>
+      <label class="block text-sm mb-1" style="color: var(--muted);" for="id_display_name">Display name</label>
+      <input id="id_display_name" type="text" value=""
+             placeholder="e.g., Teller · Main banks"
+             class="w-full rounded px-3 py-2"
+             style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
+    </div>
+    <div class="flex items-center gap-3">
+      <button id="teller-connect-btn" type="button"
+              class="font-bold px-5 py-2 rounded"
+              style="background: var(--accent-positive); color: var(--bg);">
+        Connect a bank →
+      </button>
+      <a href="{% url 'banking:link' %}" class="text-sm" style="color: var(--muted);">Cancel</a>
+    </div>
+    <div id="teller-status" class="text-sm" style="color: var(--muted);"></div>
+  </div>
+</div>
+
+<script src="https://cdn.teller.io/connect/connect.js"></script>
+<script>
+(function () {
+  const APPLICATION_ID = "{{ teller_application_id|default:""|escapejs }}";
+  const ENVIRONMENT = "{{ teller_environment|default:"sandbox"|escapejs }}";
+  const CSRF_TOKEN = "{{ csrf_token|escapejs }}";
+  const CALLBACK_URL = "{% url 'banking:link_teller_callback' %}";
+
+  const btn = document.getElementById("teller-connect-btn");
+  const status = document.getElementById("teller-status");
+  const displayNameInput = document.getElementById("id_display_name");
+
+  if (!APPLICATION_ID) {
+    btn.disabled = true;
+    status.textContent = "Teller is not configured. Set TELLER_APPLICATION_ID in your .env file.";
+    status.style.color = "var(--accent-negative)";
+    return;
+  }
+
+  const teller = TellerConnect.setup({
+    applicationId: APPLICATION_ID,
+    environment: ENVIRONMENT,
+    products: ["transactions", "balance"],
+    onSuccess: function (enrollment) {
+      status.textContent = "Linking…";
+      fetch(CALLBACK_URL, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": CSRF_TOKEN,
+        },
+        body: JSON.stringify({
+          access_token: enrollment.accessToken,
+          display_name: displayNameInput.value.trim(),
+        }),
+      })
+        .then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
+        .then(function (res) {
+          if (res.body.ok) {
+            window.location = res.body.redirect_url;
+          } else {
+            status.textContent = "Link failed: " + (res.body.error || "Unknown error");
+            status.style.color = "var(--accent-negative)";
+          }
+        })
+        .catch(function (err) {
+          status.textContent = "Link failed: " + err.message;
+          status.style.color = "var(--accent-negative)";
+        });
+    },
+    onExit: function () {
+      status.textContent = "Connect was closed before linking.";
+    },
+  });
+
+  btn.addEventListener("click", function () { teller.open(); });
+})();
+</script>
+{% endblock %}
