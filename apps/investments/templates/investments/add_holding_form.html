@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Add holdings{% endblock %}
 {% block content %}
-<div class="max-w-3xl mx-auto">
+<div class="max-w-4xl mx-auto">
   <a href="{% url 'investments:account_detail' account.id %}" class="text-sm" style="color: var(--muted);">← {{ account.effective_name }}</a>
   <h1 class="text-2xl font-bold mt-2 mb-1">Add positions</h1>
   <p class="text-sm mb-4" style="color: var(--muted);">
-    One row per holding. Symbol and Shares are required; Cost basis (total) is optional.
+    One row per holding. Symbol and Shares are required.
+    Enter <strong style="color: var(--text);">either</strong> Cost / share or Cost basis (total) — both are optional, and if both are filled the total wins.
     Empty rows are skipped. Tip: paste a block from Excel to fill multiple cells at once.
   </p>
 
@@ -21,13 +22,14 @@
       <table class="w-full" id="holdings-table">
         <thead>
           <tr style="color: var(--muted); border-bottom: 1px solid var(--border);">
-            <th class="text-left text-xs font-normal px-3 py-2 uppercase tracking-wider" style="width: 30%;">Symbol *</th>
-            <th class="text-left text-xs font-normal px-3 py-2 uppercase tracking-wider" style="width: 30%;">Shares *</th>
+            <th class="text-left text-xs font-normal px-3 py-2 uppercase tracking-wider" style="width: 22%;">Symbol *</th>
+            <th class="text-left text-xs font-normal px-3 py-2 uppercase tracking-wider" style="width: 22%;">Shares *</th>
+            <th class="text-left text-xs font-normal px-3 py-2 uppercase tracking-wider" style="width: 28%;">Cost / share</th>
             <th class="text-left text-xs font-normal px-3 py-2 uppercase tracking-wider">Cost basis (total)</th>
           </tr>
         </thead>
         <tbody>
-          {% for symbol, shares, cost in rows %}
+          {% for symbol, shares, per_share, cost in rows %}
           <tr style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
             <td class="px-2 py-1">
               <input name="symbol" type="text" value="{{ symbol }}" placeholder="AAPL" autocapitalize="characters"
@@ -36,6 +38,11 @@
             </td>
             <td class="px-2 py-1">
               <input name="shares" type="text" value="{{ shares }}" placeholder="10.5"
+                     class="w-full rounded px-2 py-1.5 num"
+                     style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
+            </td>
+            <td class="px-2 py-1">
+              <input name="cost_per_share" type="text" value="{{ per_share }}" placeholder="150.00"
                      class="w-full rounded px-2 py-1.5 num"
                      style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
             </td>
@@ -96,7 +103,6 @@
     const startColIdx = inputsInRow.indexOf(target);
 
     const lines = text.replace(/\r\n?/g, "\n").split("\n").filter(function (l, i, arr) {
-      // drop trailing empty line that Excel often pastes
       return !(i === arr.length - 1 && l === "");
     });
 

@@ -107,18 +107,20 @@ def add_holding(request, account_id):
     if request.method == "POST":
         symbols = request.POST.getlist("symbol")
         shares_list = request.POST.getlist("shares")
+        cost_per_share_list = request.POST.getlist("cost_per_share")
         cost_basis_list = request.POST.getlist("cost_basis")
 
-        rows = list(zip(symbols, shares_list, cost_basis_list))
+        rows = list(zip(symbols, shares_list, cost_per_share_list, cost_basis_list))
         added: list[str] = []
         errors: list[str] = []
 
-        for idx, (symbol_raw, shares_raw, cost_raw) in enumerate(rows, start=1):
+        for idx, (symbol_raw, shares_raw, per_share_raw, cost_raw) in enumerate(rows, start=1):
             symbol = symbol_raw.strip().upper()
             shares_str = shares_raw.strip()
+            per_share_str = per_share_raw.strip()
             cost_str = cost_raw.strip()
 
-            if not symbol and not shares_str and not cost_str:
+            if not symbol and not shares_str and not per_share_str and not cost_str:
                 continue  # blank row — skip silently
 
             if not symbol or not shares_str:
@@ -127,10 +129,16 @@ def add_holding(request, account_id):
 
             try:
                 shares = _decimal_or_none(shares_str)
+                per_share = _decimal_or_none(per_share_str)
                 cost_basis = _decimal_or_none(cost_str)
             except ValueError as exc:
                 errors.append(f"Row {idx} ({symbol}): {exc}")
                 continue
+
+            # Total cost basis wins if explicitly given. Otherwise compute
+            # from per-share × shares when per-share was entered.
+            if cost_basis is None and per_share is not None and shares is not None:
+                cost_basis = (per_share * shares).quantize(Decimal("0.01"))
 
             upsert_manual_holding(
                 investment_account=account, symbol=symbol, shares=shares, cost_basis=cost_basis,
@@ -149,7 +157,7 @@ def add_holding(request, account_id):
             messages.error(request, "No rows submitted.")
             return render(request, "investments/add_holding_form.html", {
                 "account": account,
-                "rows": rows or [("", "", "")] * 5,
+                "rows": rows or [("", "", "", "")] * 5,
             })
 
         try:
@@ -163,7 +171,7 @@ def add_holding(request, account_id):
         return HttpResponseRedirect(reverse("investments:account_detail", args=[account.id]))
     return render(request, "investments/add_holding_form.html", {
         "account": account,
-        "rows": [("", "", "")] * 5,
+        "rows": [("", "", "", "")] * 5,
     })
 
 
