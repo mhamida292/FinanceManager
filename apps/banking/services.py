@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -35,11 +36,19 @@ def sync_institution(institution: Institution) -> SyncResult:
     """Fetch fresh data from the provider and upsert accounts + transactions."""
     provider = get_provider(institution.provider)
 
+    # 30-day overlap on incremental syncs catches late-posting transactions and
+    # reconciles pending → posted transitions. None on first sync = full backfill.
+    since = None
+    if institution.last_synced_at is not None:
+        since = institution.last_synced_at - timedelta(days=30)
+
     accounts_created = accounts_updated = 0
     transactions_created = transactions_updated = 0
 
     with transaction.atomic():
-        for payload in provider.fetch_accounts_with_transactions(institution.access_url):
+        for payload in provider.fetch_accounts_with_transactions(
+            institution.access_url, since=since,
+        ):
             # Type is set on initial create from the provider's heuristic guess.
             # On update we PRESERVE the existing type — if a user reclassified an
             # account in the admin (e.g. "Other" → "Credit Card"), sync must not
