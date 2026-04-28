@@ -83,6 +83,16 @@ class Account(models.Model):
     def effective_name(self) -> str:
         return self.display_name or self.name
 
+    @property
+    def display_balance(self):
+        """User-perspective balance. Provider APIs report credit-card and loan
+        balances as POSITIVE numbers (the amount owed). For user display we
+        invert the sign so the value renders red and prefixed with '−' just
+        like any other negative number, matching the Liabilities page."""
+        if self.type in ("credit", "loan"):
+            return -abs(self.balance)
+        return self.balance
+
     def __str__(self):
         return f"{self.org_name or self.institution.effective_name} · {self.effective_name}"
 

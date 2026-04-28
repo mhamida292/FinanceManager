@@ -157,6 +157,39 @@ def test_transaction_effective_payee_precedence():
 
 
 @pytest.mark.django_db
+def test_display_balance_inverts_sign_for_credit_and_loan_accounts():
+    """Provider APIs report credit-card and loan balances as positive (amount owed).
+    display_balance flips that for user-facing rendering so it lines up with the
+    Liabilities page's convention."""
+    user = User.objects.create_user(username="alice", password="x")
+    inst = Institution.objects.create(user=user, name="Bank", access_url="https://x")
+
+    checking = Account.objects.create(
+        institution=inst, name="Checking", type="checking",
+        balance=Decimal("1500.00"), external_id="A-CHK",
+    )
+    overdrawn = Account.objects.create(
+        institution=inst, name="Overdrawn", type="checking",
+        balance=Decimal("-25.00"), external_id="A-OD",
+    )
+    credit = Account.objects.create(
+        institution=inst, name="Card", type="credit",
+        balance=Decimal("1234.56"), external_id="A-CC",
+    )
+    loan = Account.objects.create(
+        institution=inst, name="Mortgage", type="loan",
+        balance=Decimal("250000.00"), external_id="A-LN",
+    )
+
+    # Depository: pass-through (sign preserved).
+    assert checking.display_balance == Decimal("1500.00")
+    assert overdrawn.display_balance == Decimal("-25.00")
+    # Credit / loan: always negative (regardless of how provider signed it).
+    assert credit.display_balance == Decimal("-1234.56")
+    assert loan.display_balance == Decimal("-250000.00")
+
+
+@pytest.mark.django_db
 def test_display_amount_inverts_sign_for_credit_and_loan_accounts():
     """Provider APIs report credit-card charges as positive (issuer convention).
     From the user's perspective a charge is money spent — should display as
