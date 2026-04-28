@@ -105,28 +105,66 @@ def add_manual_account(request):
 def add_holding(request, account_id):
     account = get_object_or_404(InvestmentAccount.objects.for_user(request.user), pk=account_id, source="manual")
     if request.method == "POST":
-        symbol = request.POST.get("symbol", "").strip().upper()
-        try:
-            shares = _decimal_or_none(request.POST.get("shares", ""))
-            cost_basis = _decimal_or_none(request.POST.get("cost_basis", ""))
-        except ValueError as exc:
-            messages.error(request, str(exc))
-            return render(request, "investments/add_holding_form.html", {"account": account, **request.POST.dict()})
-        if not symbol or shares is None:
-            messages.error(request, "Symbol and shares are required.")
-            return render(request, "investments/add_holding_form.html", {"account": account, **request.POST.dict()})
-        upsert_manual_holding(investment_account=account, symbol=symbol, shares=shares, cost_basis=cost_basis)
-        # Auto-fetch the price right away so the user doesn't have to remember to click refresh.
+        symbols = request.POST.getlist("symbol")
+        shares_list = request.POST.getlist("shares")
+        cost_basis_list = request.POST.getlist("cost_basis")
+
+        rows = list(zip(symbols, shares_list, cost_basis_list))
+        added: list[str] = []
+        errors: list[str] = []
+
+        for idx, (symbol_raw, shares_raw, cost_raw) in enumerate(rows, start=1):
+            symbol = symbol_raw.strip().upper()
+            shares_str = shares_raw.strip()
+            cost_str = cost_raw.strip()
+
+            if not symbol and not shares_str and not cost_str:
+                continue  # blank row — skip silently
+
+            if not symbol or not shares_str:
+                errors.append(f"Row {idx}: symbol and shares are required.")
+                continue
+
+            try:
+                shares = _decimal_or_none(shares_str)
+                cost_basis = _decimal_or_none(cost_str)
+            except ValueError as exc:
+                errors.append(f"Row {idx} ({symbol}): {exc}")
+                continue
+
+            upsert_manual_holding(
+                investment_account=account, symbol=symbol, shares=shares, cost_basis=cost_basis,
+            )
+            added.append(f"{symbol} × {shares}")
+
+        if errors:
+            for err in errors:
+                messages.error(request, err)
+            return render(request, "investments/add_holding_form.html", {
+                "account": account,
+                "rows": rows,
+            })
+
+        if not added:
+            messages.error(request, "No rows submitted.")
+            return render(request, "investments/add_holding_form.html", {
+                "account": account,
+                "rows": rows or [("", "", "")] * 5,
+            })
+
         try:
             refresh_manual_prices(user=request.user)
-            messages.success(request, f"Added {symbol} × {shares}. Price refresh ran.")
+            messages.success(request, f"Added {len(added)} holding(s): {', '.join(added)}. Price refresh ran.")
         except Exception as exc:
             messages.warning(
                 request,
-                f"Added {symbol} × {shares}, but price refresh failed: {exc}. Click ⟳ Refresh prices to retry.",
+                f"Added {len(added)} holding(s), but price refresh failed: {exc}. Click ⟳ Refresh prices to retry.",
             )
         return HttpResponseRedirect(reverse("investments:account_detail", args=[account.id]))
-    return render(request, "investments/add_holding_form.html", {"account": account})
+    return render(request, "investments/add_holding_form.html", {
+        "account": account,
+        "rows": [("", "", "")] * 5,
+    })
 
 
 @login_required

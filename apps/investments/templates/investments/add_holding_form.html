@@ -1,9 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Add holding{% endblock %}
+{% block title %}Add holdings{% endblock %}
 {% block content %}
-<div class="max-w-xl mx-auto">
+<div class="max-w-3xl mx-auto">
   <a href="{% url 'investments:account_detail' account.id %}" class="text-sm" style="color: var(--muted);">← {{ account.effective_name }}</a>
-  <h1 class="text-2xl font-bold mt-2 mb-4">Add a position</h1>
+  <h1 class="text-2xl font-bold mt-2 mb-1">Add positions</h1>
+  <p class="text-sm mb-4" style="color: var(--muted);">
+    One row per holding. Symbol and Shares are required; Cost basis (total) is optional.
+    Empty rows are skipped. Tip: paste a block from Excel to fill multiple cells at once.
+  </p>
 
   {% if messages %}
     {% for message in messages %}
@@ -11,32 +15,102 @@
     {% endfor %}
   {% endif %}
 
-  <form method="post" class="space-y-4">
+  <form method="post" class="space-y-3">
     {% csrf_token %}
-    <div>
-      <label class="block text-sm mb-1" style="color: var(--muted);">Symbol *</label>
-      <input name="symbol" type="text" value="{{ symbol|default:'' }}" required
-             placeholder="AAPL" autocapitalize="characters"
-             class="w-full rounded px-3 py-2 num"
-             style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
+    <div class="rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+      <table class="w-full" id="holdings-table">
+        <thead>
+          <tr style="color: var(--muted); border-bottom: 1px solid var(--border);">
+            <th class="text-left text-xs font-normal px-3 py-2 uppercase tracking-wider" style="width: 30%;">Symbol *</th>
+            <th class="text-left text-xs font-normal px-3 py-2 uppercase tracking-wider" style="width: 30%;">Shares *</th>
+            <th class="text-left text-xs font-normal px-3 py-2 uppercase tracking-wider">Cost basis (total)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for symbol, shares, cost in rows %}
+          <tr style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
+            <td class="px-2 py-1">
+              <input name="symbol" type="text" value="{{ symbol }}" placeholder="AAPL" autocapitalize="characters"
+                     class="w-full rounded px-2 py-1.5 num"
+                     style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
+            </td>
+            <td class="px-2 py-1">
+              <input name="shares" type="text" value="{{ shares }}" placeholder="10.5"
+                     class="w-full rounded px-2 py-1.5 num"
+                     style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
+            </td>
+            <td class="px-2 py-1">
+              <input name="cost_basis" type="text" value="{{ cost }}" placeholder="1500.00"
+                     class="w-full rounded px-2 py-1.5 num"
+                     style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-    <div>
-      <label class="block text-sm mb-1" style="color: var(--muted);">Shares *</label>
-      <input name="shares" type="text" value="{{ shares|default:'' }}" required placeholder="10.5"
-             class="w-full rounded px-3 py-2 num"
-             style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
-    </div>
-    <div>
-      <label class="block text-sm mb-1" style="color: var(--muted);">Cost basis (total, optional)</label>
-      <input name="cost_basis" type="text" value="{{ cost_basis|default:'' }}" placeholder="1500.00"
-             class="w-full rounded px-3 py-2 num"
-             style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
-      <p class="text-xs mt-1" style="color: var(--muted);">What you paid total for these shares. Leave blank if unknown.</p>
-    </div>
+
     <div class="flex items-center gap-3">
-      <button type="submit" class="font-bold px-5 py-2 rounded" style="background: var(--accent-positive); color: var(--bg);">Save</button>
-      <a href="{% url 'investments:account_detail' account.id %}" class="text-sm" style="color: var(--muted);">Cancel</a>
+      <button type="button" id="add-row-btn" class="text-sm rounded px-3 py-1.5"
+              style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">+ Add row</button>
+      <div class="ml-auto flex items-center gap-3">
+        <a href="{% url 'investments:account_detail' account.id %}" class="text-sm" style="color: var(--muted);">Cancel</a>
+        <button type="submit" class="font-bold px-5 py-2 rounded"
+                style="background: var(--accent-positive); color: var(--bg);">Save all</button>
+      </div>
     </div>
   </form>
 </div>
+
+<script>
+(function () {
+  const tbody = document.querySelector("#holdings-table tbody");
+  const addBtn = document.getElementById("add-row-btn");
+
+  function appendBlankRow() {
+    const tr = tbody.querySelector("tr").cloneNode(true);
+    tr.querySelectorAll("input").forEach(function (i) { i.value = ""; });
+    tbody.appendChild(tr);
+    return tr;
+  }
+
+  addBtn.addEventListener("click", function () {
+    const tr = appendBlankRow();
+    tr.querySelector("input").focus();
+  });
+
+  // Excel paste: if the clipboard contains tabs/newlines, split it across cells
+  // and rows starting from the input that received the paste.
+  tbody.addEventListener("paste", function (e) {
+    const text = (e.clipboardData || window.clipboardData).getData("text");
+    if (!text || (!text.includes("\t") && !text.includes("\n"))) return;
+    e.preventDefault();
+
+    const target = e.target;
+    if (target.tagName !== "INPUT") return;
+
+    const startRow = target.closest("tr");
+    const allRows = Array.from(tbody.querySelectorAll("tr"));
+    const startRowIdx = allRows.indexOf(startRow);
+    const inputsInRow = Array.from(startRow.querySelectorAll("input"));
+    const startColIdx = inputsInRow.indexOf(target);
+
+    const lines = text.replace(/\r\n?/g, "\n").split("\n").filter(function (l, i, arr) {
+      // drop trailing empty line that Excel often pastes
+      return !(i === arr.length - 1 && l === "");
+    });
+
+    lines.forEach(function (line, lineOffset) {
+      let row = allRows[startRowIdx + lineOffset];
+      if (!row) row = appendBlankRow();
+      const cells = line.split("\t");
+      const inputs = row.querySelectorAll("input");
+      cells.forEach(function (cellValue, cellOffset) {
+        const inputIdx = startColIdx + cellOffset;
+        if (inputs[inputIdx]) inputs[inputIdx].value = cellValue.trim();
+      });
+    });
+  });
+})();
+</script>
 {% endblock %}
