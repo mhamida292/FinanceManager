@@ -1,4 +1,5 @@
 import base64
+import os.path
 from datetime import datetime, time, timezone
 from decimal import Decimal
 from typing import Iterable
@@ -34,8 +35,10 @@ class TellerProvider:
 
     def __init__(self, http: requests.Session | None = None, timeout: float = 30.0) -> None:
         self._http = http or requests.Session()
-        if settings.TELLER_CERT_PATH and settings.TELLER_KEY_PATH:
-            self._http.cert = (settings.TELLER_CERT_PATH, settings.TELLER_KEY_PATH)
+        cert_path = settings.TELLER_CERT_PATH
+        key_path = settings.TELLER_KEY_PATH
+        if cert_path and key_path and os.path.exists(cert_path) and os.path.exists(key_path):
+            self._http.cert = (cert_path, key_path)
         self._timeout = timeout
         self._base = "https://api.teller.io"
 

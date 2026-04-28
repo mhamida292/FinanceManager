@@ -114,11 +114,11 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 FIELD_ENCRYPTION_KEY = os.environ["FIELD_ENCRYPTION_KEY"]
 
 # --- Teller ---
-# Empty/unset values are tolerated at import time; the TellerProvider will
-# raise at construction time if the user actually tries to link a Teller
-# account without configuring these. Lets the rest of the app boot without
-# Teller credentials (e.g. for SimpleFIN-only deployments).
+# Cert/key paths default to the bind-mount location from compose.yml. If the
+# files don't exist (SimpleFIN-only deployments), TellerProvider's mTLS branch
+# is a no-op at construction time; the rest of the app still boots. Override
+# the paths via env if your container layout differs.
 TELLER_APPLICATION_ID = os.environ.get("TELLER_APPLICATION_ID", "")
 TELLER_ENVIRONMENT = os.environ.get("TELLER_ENVIRONMENT", "sandbox")
-TELLER_CERT_PATH = os.environ.get("TELLER_CERT_PATH", "")
-TELLER_KEY_PATH = os.environ.get("TELLER_KEY_PATH", "")
+TELLER_CERT_PATH = os.environ.get("TELLER_CERT_PATH", "/run/secrets/teller/cert.pem")
+TELLER_KEY_PATH = os.environ.get("TELLER_KEY_PATH", "/run/secrets/teller/key.pem")
