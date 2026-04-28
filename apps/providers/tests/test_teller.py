@@ -87,6 +87,7 @@ def test_fetch_accounts_with_transactions_parses_payload(teller_settings):
         status=200,
     )
 
+    # First page: one transaction.
     responses.add(
         responses.GET,
         "https://api.teller.io/accounts/acc_test_1/transactions",
@@ -103,6 +104,13 @@ def test_fetch_accounts_with_transactions_parses_payload(teller_settings):
                 },
             },
         ],
+        status=200,
+    )
+    # Second page (pagination follow-up via from_id): empty, terminates the loop.
+    responses.add(
+        responses.GET,
+        "https://api.teller.io/accounts/acc_test_1/transactions",
+        json=[],
         status=200,
     )
 
