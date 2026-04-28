@@ -51,7 +51,10 @@ class SimpleFINProvider:
             raise ValueError(f"Unexpected setup-exchange response: {access_url[:80]!r}")
         return access_url
 
-    def fetch_accounts_with_transactions(self, access_url: str) -> Iterable[AccountSyncPayload]:
+    def fetch_accounts_with_transactions(
+        self, access_url: str, *, since: "datetime | None" = None,
+    ) -> Iterable[AccountSyncPayload]:
+        # SimpleFIN returns all available transactions in one call; `since` is ignored.
         url = f"{access_url.rstrip('/')}/accounts?start-date=0"
         response = self._http.get(url, timeout=self._timeout)
         response.raise_for_status()

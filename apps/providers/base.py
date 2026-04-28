@@ -66,8 +66,16 @@ class FinancialProvider(Protocol):
         """Convert a one-time setup token into a long-lived access URL."""
         ...
 
-    def fetch_accounts_with_transactions(self, access_url: str) -> Iterable[AccountSyncPayload]:
-        """Pull every account + its recent transactions in one call."""
+    def fetch_accounts_with_transactions(
+        self, access_url: str, *, since: "datetime | None" = None,
+    ) -> Iterable[AccountSyncPayload]:
+        """Pull every account + its recent transactions in one call.
+
+        `since`, when provided, is a hint to providers that support incremental
+        pagination (e.g. Teller's `from_id`) — they may stop fetching transactions
+        older than this datetime. Providers that fetch all data in one call
+        (e.g. SimpleFIN) accept and ignore the kwarg. None means "fetch everything".
+        """
         ...
 
     def fetch_investment_accounts(self, access_url: str) -> Iterable[InvestmentAccountSyncPayload]:

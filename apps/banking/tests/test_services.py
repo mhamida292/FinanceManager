@@ -36,7 +36,7 @@ class _FakeProvider:
     def exchange_setup_token(self, setup_token: str) -> str:
         return "https://FAKE:TOKEN@fake.example/simplefin"
 
-    def fetch_accounts_with_transactions(self, access_url: str):
+    def fetch_accounts_with_transactions(self, access_url: str, *, since=None):
         yield from self._payloads
 
 
