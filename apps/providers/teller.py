@@ -54,7 +54,11 @@ class TellerProvider:
         )
         if response.status_code == 401:
             raise ValueError("Teller rejected the access token.")
-        response.raise_for_status()
+        if not response.ok:
+            body = (response.text or "")[:500]
+            raise ValueError(
+                f"Teller /accounts returned {response.status_code}: {body}"
+            )
         return setup_token
 
     def fetch_accounts_with_transactions(
