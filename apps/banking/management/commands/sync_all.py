@@ -1,4 +1,4 @@
-"""Run every refresh path: SimpleFIN bank sync, SimpleFIN investment sync,
+"""Run every refresh path: bank sync (multi-provider), SimpleFIN investment sync,
 yfinance price refresh on manual investments, scraped asset refresh.
 
 Runs across ALL users in one shot. Designed for nightly host-crontab invocation:
@@ -27,8 +27,8 @@ class Command(BaseCommand):
             except Exception as exc:
                 self.stderr.write(self.style.ERROR(f"[bank] {inst} FAILED: {exc}"))
 
-        # 2. SimpleFIN: investments
-        for inst in Institution.objects.all():
+        # 2. SimpleFIN: investments (Teller has no investments API)
+        for inst in Institution.objects.filter(provider="simplefin"):
             try:
                 result = sync_simplefin_investments(inst)
                 self.stdout.write(f"[invest] {inst}: {result.holdings_updated} holdings updated, {result.holdings_manual_basis_preserved} manual basis preserved")
