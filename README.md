@@ -20,6 +20,42 @@ FinLab uses [SimpleFIN Bridge](https://beta-bridge.simplefin.org/) for read-only
 
 Skip this step entirely if you only want to use the manual investment / asset / liability tracking.
 
+## Step 0b — Teller setup (optional alternative)
+
+FinLab supports Teller as an alternative to SimpleFIN for bank aggregation.
+Teller covers more US institutions and uses real account-type metadata, but
+requires mTLS client certificates.
+
+1. **Create a Teller account** at <https://teller.io>. The free `sandbox` and
+   `development` tiers (~100 enrollments) are sufficient for personal use.
+2. **Generate a certificate pair** in the Teller dashboard. Download both
+   `cert.pem` and `key.pem`.
+3. **Place the cert files** in `secrets/teller/` on the host (this directory is
+   bind-mounted into the container at `/run/secrets/teller/` — see
+   `compose.yml`):
+
+   ```
+   secrets/teller/
+   ├── cert.pem
+   └── key.pem
+   ```
+
+4. **Configure the four env vars** in `.env`:
+
+   ```
+   TELLER_APPLICATION_ID=<from the Teller dashboard>
+   TELLER_ENVIRONMENT=sandbox  # or "development" / "production"
+   TELLER_CERT_PATH=/run/secrets/teller/cert.pem
+   TELLER_KEY_PATH=/run/secrets/teller/key.pem
+   ```
+
+5. **Restart the `web` container** so it picks up the env and mount:
+   `docker compose up -d web`.
+6. **Link a bank** at `/banking/link/` → Teller card → "Connect a bank".
+
+You can run Teller and SimpleFIN side-by-side; each linked institution remembers
+its own provider and syncs independently.
+
 ## Step 1 — Clone and configure
 
 ```bash
