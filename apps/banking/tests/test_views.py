@@ -444,3 +444,36 @@ def test_cash_list_includes_savings_and_other(alice, alice_client):
     assert response.status_code == 200
     assert b"MySavings" in response.content
     assert b"MyOther" in response.content
+
+
+@pytest.mark.django_db
+def test_spending_page_requires_login(client):
+    response = client.get(reverse("spending"))
+    assert response.status_code == 302  # redirected to login
+
+
+@pytest.mark.django_db
+def test_spending_page_renders_for_authenticated_user(client):
+    user = User.objects.create_user(username="alice_spending", password="x")
+    client.force_login(user)
+    response = client.get(reverse("spending"))
+    assert response.status_code == 200
+    assert b"Spending" in response.content
+
+
+@pytest.mark.django_db
+def test_spending_page_aggregates_correctly(client):
+    user = User.objects.create_user(username="alice_spending2", password="x")
+    inst = Institution.objects.create(user=user, name="Bank", access_url="https://x")
+    acc = Account.objects.create(
+        institution=inst, name="Chk", type="checking",
+        balance=Decimal("0"), external_id="A",
+    )
+    Transaction.objects.create(
+        account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-100"), external_id="t1", category="groceries",
+    )
+    client.force_login(user)
+    response = client.get(reverse("spending"))
+    assert response.status_code == 200
+    assert b"Groceries" in response.content

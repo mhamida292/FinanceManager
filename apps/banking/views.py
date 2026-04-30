@@ -1,5 +1,5 @@
 import json
-from datetime import timedelta
+from datetime import date, timedelta
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -15,7 +15,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
 from .models import Account, Institution, Transaction
-from .services import link_institution, sync_institution
+from .services import income_expense_summary, link_institution, spending_breakdown, sync_institution
 
 
 def _page_window(current: int, total: int, edge: int = 1, around: int = 2) -> list[int | None]:
@@ -296,4 +296,33 @@ def transactions_list(request):
         "search": search,
         "filter_qs": filter_qs,
         "page_window": _page_window(page_obj.number, paginator.num_pages),
+    })
+
+
+def _spending_window(period: str) -> tuple[date, date, str]:
+    """Parse the ?period= query value into (start, end, label).
+    Defaults to current month."""
+    today = date.today()
+    if period == "30d":
+        return today - timedelta(days=29), today, "Last 30 days"
+    if period == "ytd":
+        return date(today.year, 1, 1), today, f"{today.year} YTD"
+    # default: current calendar month
+    start = date(today.year, today.month, 1)
+    return start, today, today.strftime("%B %Y")
+
+
+@login_required
+def spending(request):
+    period = request.GET.get("period", "month")
+    start, end, label = _spending_window(period)
+    breakdown = spending_breakdown(request.user, start, end)
+    income_total, expense_total = income_expense_summary(request.user, start, end)
+    return render(request, "banking/spending.html", {
+        "rows": breakdown,
+        "income_total": income_total,
+        "expense_total": expense_total,
+        "net": income_total - expense_total,
+        "period": period,
+        "period_label": label,
     })
