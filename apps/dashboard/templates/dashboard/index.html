@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load sparkline %}
 {% load money %}
+{% load category_tags %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 
@@ -44,6 +45,29 @@
   </a>
 
 </div>
+
+{% if spending_rows %}
+<div class="rounded border p-4 mb-6" style="background: var(--surface); border-color: var(--border);">
+  <div class="flex items-center justify-between mb-3">
+    <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Spending · last 30 days</div>
+    <a href="{% url 'spending' %}" class="text-xs" style="color: var(--accent-positive);">View all →</a>
+  </div>
+  <div class="flex items-center gap-4">
+    <div>{% category_pie spending_rows 100 %}</div>
+    <div class="flex-1 text-sm space-y-1">
+      {% for row in spending_rows %}
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 min-w-0">
+          <span style="display: inline-block; width: 8px; height: 8px; background: {{ row.color }}; border-radius: 1px; flex-shrink: 0;"></span>
+          <span class="truncate">{{ row.label }}</span>
+        </div>
+        <span class="num font-semibold whitespace-nowrap">{{ row.total|money }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <div class="flex items-center justify-between mb-2">
   <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Latest transactions</div>
