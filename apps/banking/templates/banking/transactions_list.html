@@ -118,7 +118,7 @@
       }
     }
 
-    const resp = await fetch("/banking/transactions/bulk-set-category-by-filter/", {
+    const resp = await fetch("/banks/transactions/bulk-set-category-by-filter/", {
       method: "POST", body: fd, headers: { "X-CSRFToken": csrf },
     });
     if (resp.ok) {
@@ -255,7 +255,7 @@
     const csrf = getCookie("csrftoken");
     const fd = new FormData();
     fd.append("category", category);
-    const resp = await fetch("/banking/transactions/" + txId + "/set-category/", {
+    const resp = await fetch("/banks/transactions/" + txId + "/set-category/", {
       method: "POST", body: fd, headers: { "X-CSRFToken": csrf },
     });
     if (resp.ok) {
@@ -370,7 +370,7 @@
     fd.append("category", category);
     ids.forEach(id => fd.append("transaction_ids", id));
 
-    const resp = await fetch("/banking/transactions/bulk-set-category/", {
+    const resp = await fetch("/banks/transactions/bulk-set-category/", {
       method: "POST", body: fd, headers: { "X-CSRFToken": csrf },
     });
     if (resp.ok) {
