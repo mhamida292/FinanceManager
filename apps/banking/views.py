@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
@@ -19,7 +19,7 @@ from .categories import (
     UNCATEGORIZED,
 )
 from .models import Account, Institution, Transaction
-from .services import income_expense_summary, link_institution, spending_breakdown, sync_institution
+from .services import income_expense_summary, link_institution, set_category as set_category_service, spending_breakdown, sync_institution
 
 
 def _page_window(current: int, total: int, edge: int = 1, around: int = 2) -> list[int | None]:
@@ -328,6 +328,21 @@ def transactions_list(request):
         "other_categories": other_categories,
         "category_labels": CATEGORY_LABELS,
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+def set_category(request, transaction_id):
+    tx = get_object_or_404(
+        Transaction.objects.for_user(request.user), pk=transaction_id,
+    )
+    category = request.POST.get("category", "").strip()
+    try:
+        set_category_service(tx, category)
+    except ValueError as exc:
+        return HttpResponseBadRequest(str(exc))
+    from .templatetags.category_tags import category_pill_html
+    return HttpResponse(category_pill_html(tx.category))
 
 
 def _spending_window(period: str) -> tuple[date, date, str]:

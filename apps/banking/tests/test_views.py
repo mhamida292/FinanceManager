@@ -503,3 +503,80 @@ def test_transactions_list_filters_by_category(client):
     assert response.status_code == 200
     assert b"Whole Foods" in response.content
     assert b"Sushi Place" not in response.content
+
+
+@pytest.mark.django_db
+def test_set_category_endpoint_requires_login(client):
+    inst = Institution.objects.create(
+        user=User.objects.create_user(username="bob_setcat", password="x"),
+        name="B", access_url="https://x",
+    )
+    acc = Account.objects.create(institution=inst, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    tx = Transaction.objects.create(
+        account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-1"), external_id="t1",
+    )
+    response = client.post(
+        reverse("banking:set_category", args=[tx.id]),
+        {"category": "personal"},
+    )
+    assert response.status_code == 302  # redirect to login
+
+
+@pytest.mark.django_db
+def test_set_category_endpoint_sets_manual(client):
+    user = User.objects.create_user(username="alice_setcat", password="x")
+    inst = Institution.objects.create(user=user, name="B", access_url="https://x")
+    acc = Account.objects.create(institution=inst, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    tx = Transaction.objects.create(
+        account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-1"), external_id="t1", category="uncategorized",
+    )
+    client.force_login(user)
+    response = client.post(
+        reverse("banking:set_category", args=[tx.id]),
+        {"category": "personal"},
+    )
+    assert response.status_code == 200
+    tx.refresh_from_db()
+    assert tx.category == "personal"
+    assert tx.category_manual is True
+
+
+@pytest.mark.django_db
+def test_set_category_endpoint_rejects_invalid_value(client):
+    user = User.objects.create_user(username="alice_setcat2", password="x")
+    inst = Institution.objects.create(user=user, name="B", access_url="https://x")
+    acc = Account.objects.create(institution=inst, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    tx = Transaction.objects.create(
+        account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-1"), external_id="t1",
+    )
+    client.force_login(user)
+    response = client.post(
+        reverse("banking:set_category", args=[tx.id]),
+        {"category": "BOGUS"},
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_set_category_endpoint_user_isolation(client):
+    alice = User.objects.create_user(username="alice_iso", password="x")
+    bob = User.objects.create_user(username="bob_iso", password="x")
+    inst = Institution.objects.create(user=bob, name="B", access_url="https://x")
+    acc = Account.objects.create(institution=inst, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    bob_tx = Transaction.objects.create(
+        account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-1"), external_id="t1",
+    )
+    client.force_login(alice)
+    response = client.post(
+        reverse("banking:set_category", args=[bob_tx.id]),
+        {"category": "personal"},
+    )
+    assert response.status_code == 404

@@ -84,7 +84,7 @@
           <td class="px-4 py-2 text-right text-xs truncate" style="color: var(--muted);">
             <a href="{% url 'banking:account_detail' tx.account.id %}">{{ tx.account.effective_name }}</a>
           </td>
-          <td class="px-4 py-2">{% category_pill tx.category %}</td>
+          <td class="px-4 py-2"><span class="category-trigger cursor-pointer" data-tx-id="{{ tx.id }}">{% category_pill tx.category %}</span></td>
           <td class="px-4 py-2 text-right num font-semibold" style="color: {% if tx.display_amount < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
             {{ tx.display_amount|money:"signed" }}
           </td>
@@ -110,7 +110,7 @@
       <div class="text-xs mt-0.5 truncate" style="color: var(--muted);">
         <span class="num">{{ tx.posted_at|date:"M j, Y" }}</span> · <a href="{% url 'banking:account_detail' tx.account.id %}">{{ tx.account.effective_name }}</a>
       </div>
-      <div class="text-xs mt-1">{% category_pill tx.category %}</div>
+      <div class="text-xs mt-1"><span class="category-trigger cursor-pointer" data-tx-id="{{ tx.id }}">{% category_pill tx.category %}</span></div>
     </div>
     {% endfor %}
   </div>
@@ -132,5 +132,71 @@
   </div>
   {% endif %}
 {% endif %}
+
+<div id="cat-popup" class="hidden fixed bg-[var(--surface)] border rounded p-2 shadow-lg z-50" style="border-color: var(--border);">
+  <div id="cat-popup-grid" class="grid grid-cols-2 gap-1 text-sm"></div>
+</div>
+
+<script>
+(function() {
+  const SPENDING = ["groceries","dining","transportation","utilities","bills","housing","health","entertainment","shopping","software","travel","personal","charity","other"];
+  const popup = document.getElementById("cat-popup");
+  const grid = document.getElementById("cat-popup-grid");
+  let activeTrigger = null;
+
+  function getCookie(name) {
+    const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+    return m ? m[2] : null;
+  }
+
+  function openPopup(trigger) {
+    activeTrigger = trigger;
+    grid.innerHTML = "";
+    SPENDING.forEach(cat => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "px-3 py-1.5 rounded hover:bg-[var(--tint-positive)] text-left";
+      item.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+      item.addEventListener("click", () => assignCategory(cat));
+      grid.appendChild(item);
+    });
+    const rect = trigger.getBoundingClientRect();
+    popup.style.left = rect.left + "px";
+    popup.style.top = (rect.bottom + 4) + "px";
+    popup.classList.remove("hidden");
+  }
+
+  function closePopup() {
+    popup.classList.add("hidden");
+    activeTrigger = null;
+  }
+
+  async function assignCategory(category) {
+    if (!activeTrigger) return;
+    const txId = activeTrigger.dataset.txId;
+    const csrf = getCookie("csrftoken");
+    const fd = new FormData();
+    fd.append("category", category);
+    const resp = await fetch("/banking/transactions/" + txId + "/set-category/", {
+      method: "POST", body: fd, headers: { "X-CSRFToken": csrf },
+    });
+    if (resp.ok) {
+      const html = await resp.text();
+      activeTrigger.innerHTML = html;
+    }
+    closePopup();
+  }
+
+  document.querySelectorAll(".category-trigger").forEach(el => {
+    el.addEventListener("click", e => {
+      e.stopPropagation();
+      openPopup(el);
+    });
+  });
+  document.addEventListener("click", e => {
+    if (!popup.contains(e.target)) closePopup();
+  });
+})();
+</script>
 
 {% endblock %}
