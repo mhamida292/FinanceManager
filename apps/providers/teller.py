@@ -147,6 +147,7 @@ class TellerProvider:
             payee=str(counterparty.get("name") or raw.get("description", "")),
             memo="",
             pending=str(details.get("processing_status", "")) == "pending",
+            provider_category=details.get("category"),
         )
 
     def fetch_investment_accounts(self, access_url: str) -> Iterable[InvestmentAccountSyncPayload]:

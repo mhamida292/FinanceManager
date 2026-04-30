@@ -2,6 +2,7 @@ import base64
 from decimal import Decimal
 
 import pytest
+import requests
 import responses
 
 from apps.providers.teller import TellerProvider
@@ -135,3 +136,45 @@ def test_fetch_accounts_with_transactions_parses_payload(teller_settings):
     assert t.pending is False
     assert t.posted_at.year == 2026 and t.posted_at.month == 4 and t.posted_at.day == 15
     assert t.posted_at.hour == 0 and t.posted_at.minute == 0
+
+
+def test_parse_transaction_extracts_category():
+    provider = TellerProvider(http=requests.Session())
+    raw = {
+        "id": "txn_x",
+        "date": "2026-04-15",
+        "amount": "-12.50",
+        "description": "Whole Foods",
+        "details": {
+            "category": "groceries",
+            "counterparty": {"name": "Whole Foods Market"},
+            "processing_status": "complete",
+        },
+    }
+    tx = provider._parse_transaction(raw)
+    assert tx.provider_category == "groceries"
+
+
+def test_parse_transaction_handles_missing_category():
+    provider = TellerProvider(http=requests.Session())
+    raw = {
+        "id": "txn_y",
+        "date": "2026-04-15",
+        "amount": "-5.00",
+        "description": "Mystery",
+        "details": {"counterparty": {}, "processing_status": "complete"},
+    }
+    tx = provider._parse_transaction(raw)
+    assert tx.provider_category is None
+
+
+def test_parse_transaction_handles_missing_details():
+    provider = TellerProvider(http=requests.Session())
+    raw = {
+        "id": "txn_z",
+        "date": "2026-04-15",
+        "amount": "-5.00",
+        "description": "Mystery",
+    }
+    tx = provider._parse_transaction(raw)
+    assert tx.provider_category is None
