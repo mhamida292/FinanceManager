@@ -306,3 +306,99 @@ def test_new_transaction_from_teller_like_provider_gets_mapped_category(monkeypa
     assert txg.category_manual is False
     assert txn.category == "uncategorized"
     assert txn.category_manual is False
+
+
+@pytest.mark.django_db
+def test_sync_does_not_overwrite_user_category_override():
+    """If a user manually sets category and category_manual=True, sync must preserve it."""
+    user = User.objects.create_user(username="alice", password="x")
+
+    class _CategorizingProvider(_FakeProvider):
+        def __init__(self):
+            super().__init__()
+            self._payloads = [
+                AccountSyncPayload(
+                    account=AccountData(
+                        external_id="ACC-1", name="Checking", type="checking",
+                        balance=Decimal("100"), currency="USD", org_name="Bank",
+                    ),
+                    transactions=(
+                        TransactionData(
+                            external_id="TXN-1",
+                            posted_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                            amount=Decimal("-25"), description="Generic",
+                            payee="Generic", memo="", pending=False,
+                            provider_category="dining",
+                        ),
+                    ),
+                ),
+            ]
+
+    registry_module._REGISTRY["fake"] = _CategorizingProvider
+    registry_module._REGISTRY["simplefin"] = _CategorizingProvider
+
+    inst = link_institution(
+        user=user, setup_token="t", display_name="Bank", provider_name="fake",
+    )
+    tx = Transaction.objects.get(account__institution=inst, external_id="TXN-1")
+    # User overrides
+    tx.category = "personal"
+    tx.category_manual = True
+    tx.save(update_fields=["category", "category_manual"])
+
+    sync_institution(inst)
+
+    tx.refresh_from_db()
+    assert tx.category == "personal", "Manual override must survive sync"
+    assert tx.category_manual is True
+
+
+@pytest.mark.django_db
+def test_sync_re_applies_mapping_when_not_manually_overridden():
+    """If category_manual is False, sync re-applies the mapped category each time
+    (in case the provider's classification changed)."""
+    user = User.objects.create_user(username="alice", password="x")
+
+    class _MutableProvider:
+        name = "fake"
+
+        def __init__(self):
+            self.current_category = "dining"
+
+        def exchange_setup_token(self, t):
+            return "https://fake"
+
+        def fetch_accounts_with_transactions(self, access_url, *, since=None):
+            yield AccountSyncPayload(
+                account=AccountData(
+                    external_id="ACC-1", name="Checking", type="checking",
+                    balance=Decimal("100"), currency="USD", org_name="Bank",
+                ),
+                transactions=(
+                    TransactionData(
+                        external_id="TXN-1",
+                        posted_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                        amount=Decimal("-25"), description="X", payee="X",
+                        memo="", pending=False,
+                        provider_category=self.current_category,
+                    ),
+                ),
+            )
+
+    provider_instance = _MutableProvider()
+    registry_module._REGISTRY["fake"] = lambda: provider_instance
+    registry_module._REGISTRY["simplefin"] = lambda: provider_instance
+
+    inst = link_institution(
+        user=user, setup_token="t", display_name="Bank", provider_name="fake",
+    )
+    tx = Transaction.objects.get(account__institution=inst, external_id="TXN-1")
+    assert tx.category == "dining"
+
+    # Provider re-categorizes; user has NOT overridden.
+    provider_instance.current_category = "groceries"
+    sync_institution(inst)
+
+    tx.refresh_from_db()
+    assert tx.category == "groceries"
+    assert tx.category_manual is False
