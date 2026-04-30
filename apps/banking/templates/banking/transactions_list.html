@@ -109,7 +109,7 @@
 
     const csrf = getCookie("csrftoken");
     const fd = new FormData();
-    fd.append("category", category);
+    fd.append("target_category", category);
     // Pass current URL filter params through.
     const url = new URL(window.location.href);
     for (const [k, v] of url.searchParams.entries()) {

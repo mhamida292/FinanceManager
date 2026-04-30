@@ -680,7 +680,7 @@ def test_bulk_set_category_returns_count(client):
 def test_bulk_set_category_by_filter_requires_login(client):
     response = client.post(
         reverse("banking:bulk_set_category_by_filter"),
-        {"category": "groceries", "category_filter": "uncategorized"},
+        {"target_category": "groceries", "category_filter": "uncategorized"},
     )
     assert response.status_code == 302
 
@@ -701,7 +701,7 @@ def test_bulk_set_category_by_filter_applies_to_search_matches(client):
     client.force_login(user)
     response = client.post(
         reverse("banking:bulk_set_category_by_filter"),
-        {"category": "groceries", "q": "Whole Foods"},
+        {"target_category": "groceries", "q": "Whole Foods"},
     )
     assert response.status_code == 200
     tx1.refresh_from_db(); tx2.refresh_from_db(); tx3.refresh_from_db()
@@ -724,7 +724,7 @@ def test_bulk_set_category_by_filter_user_isolation(client):
     client.force_login(alice)
     response = client.post(
         reverse("banking:bulk_set_category_by_filter"),
-        {"category": "groceries"},  # Alice has no transactions, this should affect 0
+        {"target_category": "groceries"},  # Alice has no transactions, this should affect 0
     )
     assert response.status_code == 200
     bob_tx.refresh_from_db()
@@ -737,6 +737,6 @@ def test_bulk_set_category_by_filter_rejects_invalid_category(client):
     client.force_login(user)
     response = client.post(
         reverse("banking:bulk_set_category_by_filter"),
-        {"category": "BOGUS"},
+        {"target_category": "BOGUS"},
     )
     assert response.status_code == 400

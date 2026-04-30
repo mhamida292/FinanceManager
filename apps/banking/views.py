@@ -422,13 +422,13 @@ def spending(request):
 @require_http_methods(["POST"])
 def bulk_set_category_by_filter(request):
     """Set the same category on every transaction matching the filter params.
-    Accepts: POST with `category` (string) and the same filter keys as
+    Accepts: POST with `target_category` (string) and the same filter keys as
     transactions_list (account, range, q, category).
     Returns JSON {"updated": N}."""
     from .categories import ALL_CATEGORIES
-    category = (request.POST.get("category") or "").strip()
-    if category not in ALL_CATEGORIES:
-        return HttpResponseBadRequest(f"Invalid category: {category}")
+    target_category = (request.POST.get("target_category") or "").strip()
+    if target_category not in ALL_CATEGORIES:
+        return HttpResponseBadRequest(f"Invalid target category: {target_category}")
     qs = _filtered_transactions_qs(request.user, request.POST)
-    count = qs.update(category=category, category_manual=True)
+    count = qs.update(category=target_category, category_manual=True)
     return JsonResponse({"updated": count})
