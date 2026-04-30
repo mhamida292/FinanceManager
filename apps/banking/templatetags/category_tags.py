@@ -27,7 +27,9 @@ def category_pie_svg(rows, size: int = 160) -> str:
         return mark_safe(
             f'<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" '
             f'xmlns="http://www.w3.org/2000/svg">'
-            f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{only.color}"/>'
+            f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{only.color}">'
+            f'<title>{only.label} · ${only.total:,.2f}</title>'
+            f'</circle>'
             f'</svg>'
         )
 
@@ -45,7 +47,11 @@ def category_pie_svg(rows, size: int = 160) -> str:
         y2 = cy + r * math.sin(end_angle)
         large_arc = 1 if slice_angle > math.pi else 0
         d = f"M {cx} {cy} L {x1:.3f} {y1:.3f} A {r} {r} 0 {large_arc} 1 {x2:.3f} {y2:.3f} Z"
-        parts.append(f'<path d="{d}" fill="{row.color}"/>')
+        parts.append(
+            f'<path d="{d}" fill="{row.color}">'
+            f'<title>{row.label} · ${row.total:,.2f}</title>'
+            f'</path>'
+        )
         angle = end_angle
     parts.append('</svg>')
     return mark_safe("".join(parts))

@@ -32,3 +32,18 @@ def test_category_pill_html_uses_color_and_label():
     html = category_pill_html("groceries")
     assert "Groceries" in html
     assert "#7a9a6a" in html or "rgb" in html
+
+
+def test_pie_svg_embeds_title_for_hover_tooltip():
+    rows = [_row("groceries", 258, "#7a9a6a"), _row("dining", 285, "#c08868")]
+    svg = category_pie_svg(rows, size=160)
+    # Each slice should have a <title> element with label and total for native browser tooltips.
+    assert "<title>Groceries · $258" in svg
+    assert "<title>Dining" in svg
+
+
+def test_pie_svg_single_slice_also_has_title():
+    rows = [_row("groceries", 100, "#7a9a6a")]
+    svg = category_pie_svg(rows, size=160)
+    assert "<title>" in svg
+    assert "Groceries" in svg
