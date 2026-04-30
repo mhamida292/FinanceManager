@@ -59,13 +59,13 @@
   {# Legend below — 2 columns on mobile, 3 on desktop, with bigger swatches #}
   <div class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-sm">
     {% for row in spending_rows %}
-    <div class="flex items-center justify-between gap-3">
+    <a href="{% url 'transactions' %}?category={{ row.category }}" class="flex items-center justify-between gap-3 hover:underline">
       <div class="flex items-center gap-2 min-w-0">
         <span style="display: inline-block; width: 10px; height: 10px; background: {{ row.color }}; border-radius: 2px; flex-shrink: 0;"></span>
         <span class="truncate">{{ row.label }}</span>
       </div>
       <span class="num font-semibold whitespace-nowrap">{{ row.total|money }}</span>
-    </div>
+    </a>
     {% endfor %}
   </div>
 </div>

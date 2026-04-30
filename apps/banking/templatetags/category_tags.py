@@ -76,9 +76,11 @@ def category_pie_svg(rows, size: int = 160) -> str:
         ring_thickness = r_outer - r_inner
         ring_radius = (r_outer + r_inner) / 2
         parts.append(
+            f'<a href="/transactions/?category={only.category}">'
             f'<circle class="slice" cx="{cx}" cy="{cy}" r="{ring_radius}" '
             f'fill="none" stroke="{only.color}" stroke-width="{ring_thickness}" '
             f'data-label="{only.label}" data-total="{only.total}" data-percent="100"/>'
+            f'</a>'
         )
     else:
         angle = -math.pi / 2  # start at 12 o'clock
@@ -88,8 +90,10 @@ def category_pie_svg(rows, size: int = 160) -> str:
             d = _ring_path(cx, cy, r_outer, r_inner, angle, end_angle)
             percent = float(row.total / total) * 100
             parts.append(
+                f'<a href="/transactions/?category={row.category}">'
                 f'<path class="slice" d="{d}" fill="{row.color}" '
                 f'data-label="{row.label}" data-total="{row.total}" data-percent="{percent:.1f}"/>'
+                f'</a>'
             )
             angle = end_angle
 

@@ -73,3 +73,17 @@ def test_pie_svg_has_data_attributes_for_hover():
     svg = category_pie_svg(rows, size=200)
     # Each slice path should have data-label and data-total for the JS hover handler.
     assert "data-label=" in svg or "data-category=" in svg
+
+
+def test_pie_svg_slices_are_clickable_links():
+    rows = [_row("groceries", 100, "#7a9a6a"), _row("dining", 50, "#c08868")]
+    svg = category_pie_svg(rows, size=160)
+    # Each slice should be wrapped in an <a href="/transactions/?category=...">
+    assert '<a href="/transactions/?category=groceries">' in svg
+    assert '<a href="/transactions/?category=dining">' in svg
+
+
+def test_pie_svg_single_slice_is_clickable_link():
+    rows = [_row("groceries", 100, "#7a9a6a")]
+    svg = category_pie_svg(rows, size=160)
+    assert '<a href="/transactions/?category=groceries">' in svg
