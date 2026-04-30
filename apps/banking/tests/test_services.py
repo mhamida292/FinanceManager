@@ -5,7 +5,7 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.banking.models import Account, Institution, Transaction
-from apps.banking.services import income_expense_summary, link_institution, spending_breakdown, sync_institution
+from apps.banking.services import income_expense_summary, link_institution, set_category, spending_breakdown, sync_institution
 from apps.providers import registry as registry_module
 from apps.providers.base import AccountData, AccountSyncPayload, TransactionData
 
@@ -515,3 +515,40 @@ def test_income_expense_summary_empty_range():
     income, expense = income_expense_summary(user, date(2026, 4, 1), date(2026, 4, 30))
     assert income == Decimal("0")
     assert expense == Decimal("0")
+
+
+@pytest.mark.django_db
+def test_set_category_marks_manual():
+    user = User.objects.create_user(username="alice", password="x")
+    inst = Institution.objects.create(user=user, name="Bank", access_url="https://x")
+    acc = Account.objects.create(
+        institution=inst, name="Chk", type="checking",
+        balance=Decimal("0"), external_id="A",
+    )
+    tx = Transaction.objects.create(
+        account=acc, posted_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        amount=Decimal("-10"), external_id="t1", category="uncategorized",
+    )
+
+    set_category(tx, "personal")
+
+    tx.refresh_from_db()
+    assert tx.category == "personal"
+    assert tx.category_manual is True
+
+
+@pytest.mark.django_db
+def test_set_category_rejects_unknown_value():
+    user = User.objects.create_user(username="alice", password="x")
+    inst = Institution.objects.create(user=user, name="Bank", access_url="https://x")
+    acc = Account.objects.create(
+        institution=inst, name="Chk", type="checking",
+        balance=Decimal("0"), external_id="A",
+    )
+    tx = Transaction.objects.create(
+        account=acc, posted_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        amount=Decimal("-10"), external_id="t1",
+    )
+
+    with pytest.raises(ValueError):
+        set_category(tx, "not-a-real-category")

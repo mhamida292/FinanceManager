@@ -131,7 +131,7 @@ from datetime import date as _date
 from decimal import Decimal as _Decimal
 
 from .categories import (
-    CATEGORY_COLORS, CATEGORY_LABELS, INCOME_CATEGORIES, SPENDING_CATEGORIES,
+    ALL_CATEGORIES, CATEGORY_COLORS, CATEGORY_LABELS, INCOME_CATEGORIES, SPENDING_CATEGORIES,
     TRANSFER_CATEGORIES, UNCATEGORIZED,
 )
 
@@ -210,3 +210,14 @@ def income_expense_summary(user, start: _date, end: _date) -> tuple[_Decimal, _D
         elif amt < 0:
             expense += -amt
     return income, expense
+
+
+def set_category(transaction: "Transaction", category: str) -> "Transaction":
+    """Set the category on a transaction and flag it as user-overridden.
+    Raises ValueError if `category` is not a valid category key."""
+    if category not in ALL_CATEGORIES:
+        raise ValueError(f"Unknown category: {category}")
+    transaction.category = category
+    transaction.category_manual = True
+    transaction.save(update_fields=["category", "category_manual"])
+    return transaction
