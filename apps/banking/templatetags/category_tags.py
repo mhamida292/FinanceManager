@@ -93,17 +93,18 @@ def category_pie_svg(rows, size: int = 160) -> str:
             )
             angle = end_angle
 
-    # Center label (three stacked text lines, empty by default — populated by JS on hover).
+    # Center label (three stacked text lines; title/amount show defaults, percent empty until hover).
     parts.append(
         f'<text class="center-label center-label-title" x="{cx}" y="{cy - amount_font * 0.7}" '
         f'text-anchor="middle" dominant-baseline="middle" '
         f'style="font-size: {title_font}px; fill: var(--muted, #888); '
-        f'text-transform: uppercase; letter-spacing: 0.5px;"></text>'
+        f'text-transform: uppercase; letter-spacing: 0.5px;">Total</text>'
     )
     parts.append(
         f'<text class="center-label center-label-amount" x="{cx}" y="{cy + amount_font * 0.15}" '
         f'text-anchor="middle" dominant-baseline="middle" '
-        f'style="font-size: {amount_font}px; font-weight: 600; fill: var(--text, #ddd);"></text>'
+        f'style="font-size: {amount_font}px; font-weight: 600; fill: var(--text, #ddd);">'
+        f'${total:,.2f}</text>'
     )
     parts.append(
         f'<text class="center-label center-label-percent" x="{cx}" y="{cy + amount_font * 0.95}" '
@@ -123,6 +124,8 @@ def category_pie_svg(rows, size: int = 160) -> str:
         f'  const amount = root.querySelector(".center-label-amount");'
         f'  const percent = root.querySelector(".center-label-percent");'
         f'  const slices = root.querySelectorAll(".slice");'
+        f'  const defaultTitle = "Total";'
+        f'  const defaultAmount = "${total:,.2f}";'
         f'  slices.forEach(s => {{'
         f'    s.addEventListener("mouseenter", () => {{'
         f'      title.textContent = s.getAttribute("data-label");'
@@ -130,8 +133,8 @@ def category_pie_svg(rows, size: int = 160) -> str:
         f'      percent.textContent = s.getAttribute("data-percent") + "%";'
         f'    }});'
         f'    s.addEventListener("mouseleave", () => {{'
-        f'      title.textContent = "";'
-        f'      amount.textContent = "";'
+        f'      title.textContent = defaultTitle;'
+        f'      amount.textContent = defaultAmount;'
         f'      percent.textContent = "";'
         f'    }});'
         f'  }});'
