@@ -35,19 +35,21 @@ def test_category_pill_html_uses_color_and_label():
     assert "#7a9a6a" in html or "rgb" in html
 
 
-def test_pie_svg_embeds_title_for_hover_tooltip():
+def test_pie_svg_each_slice_has_data_attrs_for_hover():
     rows = [_row("groceries", 258, "#7a9a6a"), _row("dining", 285, "#c08868")]
     svg = category_pie_svg(rows, size=160)
-    # Each slice should have a <title> element with label and total for native browser tooltips.
-    assert "<title>Groceries · $258" in svg
-    assert "<title>Dining" in svg
+    # Each slice has data-label, data-total, data-percent for the JS hover handler.
+    assert 'data-label="Groceries"' in svg
+    assert 'data-label="Dining"' in svg
+    assert 'data-total="258"' in svg or 'data-total="258.00"' in svg
+    assert 'data-percent="' in svg
 
 
-def test_pie_svg_single_slice_also_has_title():
+def test_pie_svg_single_slice_also_has_data_attrs():
     rows = [_row("groceries", 100, "#7a9a6a")]
     svg = category_pie_svg(rows, size=160)
-    assert "<title>" in svg
-    assert "Groceries" in svg
+    assert 'data-label="Groceries"' in svg
+    assert 'data-percent="100"' in svg
 
 
 def test_pie_svg_is_donut_with_inner_circle():

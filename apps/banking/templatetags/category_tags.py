@@ -47,9 +47,9 @@ def category_pie_svg(rows, size: int = 160) -> str:
     scope = uuid.uuid4().hex[:8]
     container_id = f"pie-{scope}"
 
-    # Center label fonts scale with size.
-    title_font = max(int(size * 0.07), 11)
-    amount_font = max(int(size * 0.13), 14)
+    # Center label fonts scale with size but are capped to stay within the donut hole.
+    title_font = max(min(int(size * 0.06), 12), 10)
+    amount_font = max(min(int(size * 0.10), 18), 13)
 
     parts = [
         f'<div id="{container_id}" class="cat-pie-wrap" style="position: relative; display: inline-block;">'
@@ -78,9 +78,7 @@ def category_pie_svg(rows, size: int = 160) -> str:
         parts.append(
             f'<circle class="slice" cx="{cx}" cy="{cy}" r="{ring_radius}" '
             f'fill="none" stroke="{only.color}" stroke-width="{ring_thickness}" '
-            f'data-label="{only.label}" data-total="{only.total}" data-percent="100">'
-            f'<title>{only.label} · ${only.total:,.2f}</title>'
-            f'</circle>'
+            f'data-label="{only.label}" data-total="{only.total}" data-percent="100"/>'
         )
     else:
         angle = -math.pi / 2  # start at 12 o'clock
@@ -91,23 +89,26 @@ def category_pie_svg(rows, size: int = 160) -> str:
             percent = float(row.total / total) * 100
             parts.append(
                 f'<path class="slice" d="{d}" fill="{row.color}" '
-                f'data-label="{row.label}" data-total="{row.total}" data-percent="{percent:.1f}">'
-                f'<title>{row.label} · ${row.total:,.2f}</title>'
-                f'</path>'
+                f'data-label="{row.label}" data-total="{row.total}" data-percent="{percent:.1f}"/>'
             )
             angle = end_angle
 
-    # Center label (two stacked text lines, empty by default — populated by JS on hover).
+    # Center label (three stacked text lines, empty by default — populated by JS on hover).
     parts.append(
-        f'<text class="center-label center-label-title" x="{cx}" y="{cy - 6}" '
+        f'<text class="center-label center-label-title" x="{cx}" y="{cy - amount_font * 0.7}" '
         f'text-anchor="middle" dominant-baseline="middle" '
         f'style="font-size: {title_font}px; fill: var(--muted, #888); '
         f'text-transform: uppercase; letter-spacing: 0.5px;"></text>'
     )
     parts.append(
-        f'<text class="center-label center-label-amount" x="{cx}" y="{cy + amount_font * 0.6}" '
+        f'<text class="center-label center-label-amount" x="{cx}" y="{cy + amount_font * 0.15}" '
         f'text-anchor="middle" dominant-baseline="middle" '
         f'style="font-size: {amount_font}px; font-weight: 600; fill: var(--text, #ddd);"></text>'
+    )
+    parts.append(
+        f'<text class="center-label center-label-percent" x="{cx}" y="{cy + amount_font * 0.95}" '
+        f'text-anchor="middle" dominant-baseline="middle" '
+        f'style="font-size: {title_font}px; fill: var(--muted, #888);"></text>'
     )
 
     parts.append('</svg>')
@@ -120,15 +121,18 @@ def category_pie_svg(rows, size: int = 160) -> str:
         f'  if (!root) return;'
         f'  const title = root.querySelector(".center-label-title");'
         f'  const amount = root.querySelector(".center-label-amount");'
+        f'  const percent = root.querySelector(".center-label-percent");'
         f'  const slices = root.querySelectorAll(".slice");'
         f'  slices.forEach(s => {{'
         f'    s.addEventListener("mouseenter", () => {{'
         f'      title.textContent = s.getAttribute("data-label");'
-        f'      amount.textContent = "$" + parseFloat(s.getAttribute("data-total")).toLocaleString("en-US", {{ minimumFractionDigits: 2, maximumFractionDigits: 2 }}) + " (" + s.getAttribute("data-percent") + "%)";'
+        f'      amount.textContent = "$" + parseFloat(s.getAttribute("data-total")).toLocaleString("en-US", {{ minimumFractionDigits: 2, maximumFractionDigits: 2 }});'
+        f'      percent.textContent = s.getAttribute("data-percent") + "%";'
         f'    }});'
         f'    s.addEventListener("mouseleave", () => {{'
         f'      title.textContent = "";'
         f'      amount.textContent = "";'
+        f'      percent.textContent = "";'
         f'    }});'
         f'  }});'
         f'}})();'
