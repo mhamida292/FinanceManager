@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from apps.providers.registry import get as get_provider
 
+from .categories import map_teller_category
 from .models import Account, Institution, Transaction
 
 
@@ -84,21 +85,33 @@ def sync_institution(institution: Institution) -> SyncResult:
                 accounts_updated += 1
 
             for tx in payload.transactions:
-                _, tx_created = Transaction.objects.update_or_create(
-                    account=acc,
-                    external_id=tx.external_id,
-                    defaults={
-                        "posted_at": tx.posted_at,
-                        "amount": tx.amount,
-                        "description": tx.description,
-                        "payee": tx.payee,
-                        "memo": tx.memo,
-                        "pending": tx.pending,
-                    },
-                )
-                if tx_created:
+                mapped_category = map_teller_category(tx.provider_category)
+                defaults = {
+                    "posted_at": tx.posted_at,
+                    "amount": tx.amount,
+                    "description": tx.description,
+                    "payee": tx.payee,
+                    "memo": tx.memo,
+                    "pending": tx.pending,
+                }
+                existing_tx = Transaction.objects.filter(
+                    account=acc, external_id=tx.external_id,
+                ).first()
+                if existing_tx is None:
+                    Transaction.objects.create(
+                        account=acc, external_id=tx.external_id,
+                        category=mapped_category,
+                        category_manual=False,
+                        **defaults,
+                    )
                     transactions_created += 1
                 else:
+                    for field, value in defaults.items():
+                        setattr(existing_tx, field, value)
+                    # Only re-apply mapped category if user has not overridden it.
+                    if not existing_tx.category_manual:
+                        existing_tx.category = mapped_category
+                    existing_tx.save()
                     transactions_updated += 1
 
         institution.last_synced_at = timezone.now()

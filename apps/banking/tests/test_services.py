@@ -257,3 +257,52 @@ def test_sync_does_not_overwrite_transaction_rename():
     # Provider-sourced fields stay current
     assert tx.payee == "Cafe"
     assert tx.description == "Coffee"
+
+
+@pytest.mark.django_db
+def test_new_transaction_from_teller_like_provider_gets_mapped_category(monkeypatch):
+    """When the provider returns provider_category='groceries', the new Transaction
+    is created with category='groceries' (mapped) and category_manual=False."""
+    user = User.objects.create_user(username="alice", password="x")
+
+    class _CategorizingProvider(_FakeProvider):
+        def __init__(self):
+            super().__init__()
+            self._payloads = [
+                AccountSyncPayload(
+                    account=AccountData(
+                        external_id="ACC-1", name="Checking", type="checking",
+                        balance=Decimal("100"), currency="USD", org_name="Bank",
+                    ),
+                    transactions=(
+                        TransactionData(
+                            external_id="TXN-G",
+                            posted_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                            amount=Decimal("-25.00"), description="Whole Foods",
+                            payee="Whole Foods", memo="", pending=False,
+                            provider_category="groceries",
+                        ),
+                        TransactionData(
+                            external_id="TXN-N",
+                            posted_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+                            amount=Decimal("-3.00"), description="Cash",
+                            payee="ATM", memo="", pending=False,
+                            provider_category=None,
+                        ),
+                    ),
+                ),
+            ]
+
+    registry_module._REGISTRY["fake"] = _CategorizingProvider
+    registry_module._REGISTRY["simplefin"] = _CategorizingProvider
+
+    inst = link_institution(
+        user=user, setup_token="t", display_name="Bank", provider_name="fake",
+    )
+    txg = Transaction.objects.get(account__institution=inst, external_id="TXN-G")
+    txn = Transaction.objects.get(account__institution=inst, external_id="TXN-N")
+
+    assert txg.category == "groceries"
+    assert txg.category_manual is False
+    assert txn.category == "uncategorized"
+    assert txn.category_manual is False
