@@ -48,23 +48,25 @@
 
 {% if spending_rows %}
 <div class="rounded border p-4 mb-6" style="background: var(--surface); border-color: var(--border);">
-  <div class="flex items-center justify-between mb-3">
+  <div class="flex items-center justify-between mb-4">
     <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Spending · last 30 days</div>
     <a href="{% url 'spending' %}" class="text-xs" style="color: var(--accent-positive);">View all →</a>
   </div>
-  <div class="flex items-center gap-4">
-    <div>{% category_pie spending_rows 160 %}</div>
-    <div class="flex-1 text-sm space-y-1">
-      {% for row in spending_rows %}
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2 min-w-0">
-          <span style="display: inline-block; width: 8px; height: 8px; background: {{ row.color }}; border-radius: 1px; flex-shrink: 0;"></span>
-          <span class="truncate">{{ row.label }}</span>
-        </div>
-        <span class="num font-semibold whitespace-nowrap">{{ row.total|money }}</span>
+
+  {# Centered donut #}
+  <div class="flex justify-center mb-5">{% category_pie spending_rows 260 %}</div>
+
+  {# Legend below — 2 columns on mobile, 3 on desktop, with bigger swatches #}
+  <div class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+    {% for row in spending_rows %}
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2 min-w-0">
+        <span style="display: inline-block; width: 10px; height: 10px; background: {{ row.color }}; border-radius: 2px; flex-shrink: 0;"></span>
+        <span class="truncate">{{ row.label }}</span>
       </div>
-      {% endfor %}
+      <span class="num font-semibold whitespace-nowrap">{{ row.total|money }}</span>
     </div>
+    {% endfor %}
   </div>
 </div>
 {% endif %}
