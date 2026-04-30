@@ -345,6 +345,28 @@ def set_category(request, transaction_id):
     return HttpResponse(category_pill_html(tx.category))
 
 
+@login_required
+@require_http_methods(["POST"])
+def bulk_set_category(request):
+    """Set the same category on a list of transactions in one shot.
+    Accepts: POST with `category` (string) and `transaction_ids` (list of ints).
+    Returns JSON {"updated": N} where N is the number of rows actually updated."""
+    from .categories import ALL_CATEGORIES
+    category = (request.POST.get("category") or "").strip()
+    if category not in ALL_CATEGORIES:
+        return HttpResponseBadRequest(f"Invalid category: {category}")
+    raw_ids = request.POST.getlist("transaction_ids")
+    if not raw_ids:
+        return HttpResponseBadRequest("No transactions selected.")
+    try:
+        ids = [int(x) for x in raw_ids]
+    except (TypeError, ValueError):
+        return HttpResponseBadRequest("Invalid transaction id.")
+    qs = Transaction.objects.for_user(request.user).filter(id__in=ids)
+    count = qs.update(category=category, category_manual=True)
+    return JsonResponse({"updated": count})
+
+
 def _spending_window(period: str) -> tuple[date, date, str]:
     """Parse the ?period= query value into (start, end, label).
     Defaults to current month."""

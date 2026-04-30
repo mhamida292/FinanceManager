@@ -580,3 +580,97 @@ def test_set_category_endpoint_user_isolation(client):
         {"category": "personal"},
     )
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_bulk_set_category_requires_login(client):
+    response = client.post(
+        reverse("banking:bulk_set_category"),
+        {"category": "groceries", "transaction_ids": [1, 2]},
+    )
+    assert response.status_code == 302  # redirect to login
+
+
+@pytest.mark.django_db
+def test_bulk_set_category_updates_listed_transactions(client):
+    user = User.objects.create_user(username="alice_bulk1", password="x")
+    inst = Institution.objects.create(user=user, name="B", access_url="https://x")
+    acc = Account.objects.create(institution=inst, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    tx1 = Transaction.objects.create(account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-1"), external_id="t1", category="uncategorized")
+    tx2 = Transaction.objects.create(account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-2"), external_id="t2", category="uncategorized")
+    tx3 = Transaction.objects.create(account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-3"), external_id="t3", category="uncategorized")
+
+    client.force_login(user)
+    response = client.post(
+        reverse("banking:bulk_set_category"),
+        {"category": "groceries", "transaction_ids": [tx1.id, tx3.id]},
+    )
+    assert response.status_code == 200
+    tx1.refresh_from_db(); tx2.refresh_from_db(); tx3.refresh_from_db()
+    assert tx1.category == "groceries"
+    assert tx1.category_manual is True
+    assert tx2.category == "uncategorized"  # untouched
+    assert tx2.category_manual is False
+    assert tx3.category == "groceries"
+    assert tx3.category_manual is True
+
+
+@pytest.mark.django_db
+def test_bulk_set_category_rejects_invalid_category(client):
+    user = User.objects.create_user(username="alice_bulk2", password="x")
+    inst = Institution.objects.create(user=user, name="B", access_url="https://x")
+    acc = Account.objects.create(institution=inst, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    tx = Transaction.objects.create(account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-1"), external_id="t1")
+    client.force_login(user)
+    response = client.post(
+        reverse("banking:bulk_set_category"),
+        {"category": "BOGUS", "transaction_ids": [tx.id]},
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_bulk_set_category_user_isolation(client):
+    alice = User.objects.create_user(username="alice_bulk3", password="x")
+    bob = User.objects.create_user(username="bob_bulk", password="x")
+    inst = Institution.objects.create(user=bob, name="B", access_url="https://x")
+    acc = Account.objects.create(institution=inst, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    bob_tx = Transaction.objects.create(account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-1"), external_id="t1", category="uncategorized")
+    client.force_login(alice)
+    response = client.post(
+        reverse("banking:bulk_set_category"),
+        {"category": "groceries", "transaction_ids": [bob_tx.id]},
+    )
+    # Alice can't update Bob's transaction. Endpoint scopes by user, so it returns 200 with 0 updated.
+    assert response.status_code == 200
+    bob_tx.refresh_from_db()
+    assert bob_tx.category == "uncategorized"
+
+
+@pytest.mark.django_db
+def test_bulk_set_category_returns_count(client):
+    user = User.objects.create_user(username="alice_bulk4", password="x")
+    inst = Institution.objects.create(user=user, name="B", access_url="https://x")
+    acc = Account.objects.create(institution=inst, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    tx_ids = []
+    for i in range(3):
+        tx = Transaction.objects.create(account=acc, posted_at=datetime.now(dt_tz.utc),
+            amount=Decimal(f"-{i+1}"), external_id=f"t{i}", category="uncategorized")
+        tx_ids.append(tx.id)
+    client.force_login(user)
+    response = client.post(
+        reverse("banking:bulk_set_category"),
+        {"category": "groceries", "transaction_ids": tx_ids},
+    )
+    import json
+    data = json.loads(response.content)
+    assert data["updated"] == 3

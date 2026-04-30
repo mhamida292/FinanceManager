@@ -66,6 +66,7 @@
     <table class="w-full text-sm">
       <thead style="border-bottom: 1px solid var(--border); color: var(--dim);">
         <tr class="text-[10px] uppercase tracking-widest">
+          <th class="px-4 py-2 w-8"><input type="checkbox" id="cb-all" class="cursor-pointer"></th>
           <th class="px-4 py-2 text-left w-28">Date</th>
           <th class="px-4 py-2 text-left">Payee</th>
           <th class="px-4 py-2 text-right w-40">Account</th>
@@ -76,6 +77,7 @@
       <tbody>
         {% for tx in page_obj.object_list %}
         <tr style="border-top: 1px solid var(--border);">
+          <td class="px-4 py-2"><input type="checkbox" class="row-cb cursor-pointer" data-tx-id="{{ tx.id }}"></td>
           <td class="px-4 py-2 num text-xs" style="color: var(--muted);">{{ tx.posted_at|date:"M j, Y" }}{% if tx.pending %} <span style="color: var(--accent-assets);">·pending</span>{% endif %}</td>
           <td class="px-4 py-2 truncate">
             {{ tx.effective_payee }}
@@ -99,6 +101,7 @@
     {% for tx in page_obj.object_list %}
     <div class="px-4 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
       <div class="flex items-baseline justify-between gap-3">
+        <input type="checkbox" class="row-cb cursor-pointer mr-2" data-tx-id="{{ tx.id }}">
         <div class="font-medium truncate min-w-0">
           {{ tx.effective_payee }}
           <a href="{% url 'banking:rename_transaction' tx.id %}" class="text-xs ml-1" style="color: var(--dim);" title="Rename">✎</a>
@@ -195,6 +198,112 @@
   });
   document.addEventListener("click", e => {
     if (!popup.contains(e.target)) closePopup();
+  });
+})();
+</script>
+
+<div id="bulk-bar" class="hidden fixed bottom-0 left-0 right-0 z-40 px-4 py-3 flex items-center justify-between gap-4"
+     style="background: var(--surface); border-top: 1px solid var(--border); box-shadow: 0 -4px 12px rgba(0,0,0,0.15);">
+  <div class="text-sm">
+    <span id="bulk-count" class="font-semibold" style="color: var(--accent-positive);">0</span>
+    <span style="color: var(--muted);"> selected</span>
+  </div>
+  <div class="flex items-center gap-3">
+    <select id="bulk-category" class="text-sm rounded px-2 py-1.5"
+            style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
+      <option value="">Set to…</option>
+      <option value="groceries">Groceries</option>
+      <option value="dining">Dining</option>
+      <option value="transportation">Transportation</option>
+      <option value="utilities">Utilities</option>
+      <option value="bills">Bills</option>
+      <option value="housing">Housing</option>
+      <option value="health">Health</option>
+      <option value="entertainment">Entertainment</option>
+      <option value="shopping">Shopping</option>
+      <option value="software">Software</option>
+      <option value="travel">Travel</option>
+      <option value="personal">Personal</option>
+      <option value="charity">Charity</option>
+      <option value="other">Other</option>
+      <option value="income">Income</option>
+      <option value="transfer">Transfer</option>
+      <option value="uncategorized">Uncategorized</option>
+    </select>
+    <button id="bulk-apply" class="text-sm font-bold px-3 py-1.5 rounded"
+            style="background: var(--accent-positive); color: var(--bg);">Apply</button>
+    <button id="bulk-cancel" class="text-sm px-3 py-1.5 rounded"
+            style="border: 1px solid var(--border); color: var(--muted);">Cancel</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  const bar = document.getElementById("bulk-bar");
+  const countEl = document.getElementById("bulk-count");
+  const catSelect = document.getElementById("bulk-category");
+  const applyBtn = document.getElementById("bulk-apply");
+  const cancelBtn = document.getElementById("bulk-cancel");
+  const allCb = document.getElementById("cb-all");
+  const rowCbs = () => Array.from(document.querySelectorAll(".row-cb"));
+
+  function getCookie(name) {
+    const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+    return m ? m[2] : null;
+  }
+
+  function selectedIds() {
+    return rowCbs().filter(cb => cb.checked).map(cb => cb.dataset.txId);
+  }
+
+  function refresh() {
+    const ids = selectedIds();
+    countEl.textContent = ids.length;
+    if (ids.length > 0) bar.classList.remove("hidden");
+    else bar.classList.add("hidden");
+    if (allCb) {
+      const total = rowCbs().length;
+      allCb.checked = total > 0 && ids.length === total;
+      allCb.indeterminate = ids.length > 0 && ids.length < total;
+    }
+  }
+
+  rowCbs().forEach(cb => cb.addEventListener("change", refresh));
+  if (allCb) {
+    allCb.addEventListener("change", () => {
+      rowCbs().forEach(cb => { cb.checked = allCb.checked; });
+      refresh();
+    });
+  }
+
+  cancelBtn.addEventListener("click", () => {
+    rowCbs().forEach(cb => { cb.checked = false; });
+    refresh();
+  });
+
+  applyBtn.addEventListener("click", async () => {
+    const category = catSelect.value;
+    if (!category) {
+      catSelect.focus();
+      return;
+    }
+    const ids = selectedIds();
+    if (ids.length === 0) return;
+
+    const csrf = getCookie("csrftoken");
+    const fd = new FormData();
+    fd.append("category", category);
+    ids.forEach(id => fd.append("transaction_ids", id));
+
+    const resp = await fetch("/banking/transactions/bulk-set-category/", {
+      method: "POST", body: fd, headers: { "X-CSRFToken": csrf },
+    });
+    if (resp.ok) {
+      // Reload to show updated pills + clear selection.
+      window.location.reload();
+    } else {
+      alert("Bulk update failed: " + resp.status);
+    }
   });
 })();
 </script>

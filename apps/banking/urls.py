@@ -15,6 +15,7 @@ urlpatterns = [
     path("accounts/<int:account_id>/", views.account_detail, name="account_detail"),
     path("accounts/<int:account_id>/rename/", views.rename_account, name="rename_account"),
     path("transactions/<int:transaction_id>/rename/", views.rename_transaction, name="rename_transaction"),
+    path("transactions/bulk-set-category/", views.bulk_set_category, name="bulk_set_category"),
     path("transactions/<int:transaction_id>/set-category/", views.set_category, name="set_category"),
     path("<int:institution_id>/delete/", views.delete_institution, name="delete_institution"),
     path("accounts/<int:account_id>/delete/", views.delete_account, name="delete_account"),
