@@ -23,6 +23,7 @@ class TransactionData:
     payee: str
     memo: str
     pending: bool
+    provider_category: str | None = None
 
 
 @dataclass(frozen=True)
