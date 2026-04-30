@@ -12,8 +12,9 @@ def _row(cat, total, color="#888"):
 def test_pie_svg_with_single_slice_returns_full_circle():
     rows = [_row("groceries", 100, "#7a9a6a")]
     svg = category_pie_svg(rows, size=160)
-    assert svg.startswith("<svg")
-    assert "fill=\"#7a9a6a\"" in svg
+    assert svg.startswith("<div") or svg.startswith("<svg")
+    # Single-slice donut: circle with stroke (not fill) using the slice color.
+    assert "#7a9a6a" in svg
     assert 'width="160"' in svg
 
 
@@ -47,3 +48,28 @@ def test_pie_svg_single_slice_also_has_title():
     svg = category_pie_svg(rows, size=160)
     assert "<title>" in svg
     assert "Groceries" in svg
+
+
+def test_pie_svg_is_donut_with_inner_circle():
+    rows = [_row("groceries", 100, "#7a9a6a"), _row("dining", 50, "#c08868")]
+    svg = category_pie_svg(rows, size=200)
+    # The donut should produce ring segments — paths should contain TWO arc commands.
+    # Count the 'A' arc commands in the path data (space-padded to avoid false matches).
+    assert svg.count(" A ") >= 2  # at least one outer + one inner arc per slice means 2 arcs minimum
+
+
+def test_pie_svg_has_center_text_for_total():
+    from decimal import Decimal
+    rows = [_row("groceries", 100, "#7a9a6a"), _row("dining", 200, "#c08868")]
+    svg = category_pie_svg(rows, size=200)
+    # Center label shows total amount.
+    assert "<text" in svg
+    # The total is 300, but format may be $300 or $300.00
+    assert "300" in svg
+
+
+def test_pie_svg_has_data_attributes_for_hover():
+    rows = [_row("groceries", 100, "#7a9a6a")]
+    svg = category_pie_svg(rows, size=200)
+    # Each slice path should have data-label and data-total for the JS hover handler.
+    assert "data-label=" in svg or "data-category=" in svg
