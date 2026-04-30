@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 
+from .categories import CATEGORY_CHOICES, UNCATEGORIZED
 from .fields import EncryptedTextField
 from .managers import UserScopedQuerySet
 
@@ -114,6 +115,13 @@ class Transaction(models.Model):
     )
     memo = models.CharField(max_length=500, blank=True)
     pending = models.BooleanField(default=False)
+    category = models.CharField(
+        max_length=20,
+        choices=CATEGORY_CHOICES,
+        default=UNCATEGORIZED,
+        db_index=True,
+    )
+    category_manual = models.BooleanField(default=False)
     external_id = models.CharField(max_length=200, help_text="Provider's txn ID; upsert key.")
 
     objects = TransactionQuerySet.as_manager()
