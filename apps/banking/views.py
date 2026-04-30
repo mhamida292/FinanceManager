@@ -406,7 +406,7 @@ def _spending_window(period: str) -> tuple[date, date, str]:
 def spending(request):
     period = request.GET.get("period", "month")
     start, end, label = _spending_window(period)
-    breakdown = spending_breakdown(request.user, start, end)
+    breakdown = spending_breakdown(request.user, start, end, include_transfers=True)
     income_total, expense_total = income_expense_summary(request.user, start, end)
     return render(request, "banking/spending.html", {
         "rows": breakdown,

@@ -552,3 +552,31 @@ def test_set_category_rejects_unknown_value():
 
     with pytest.raises(ValueError):
         set_category(tx, "not-a-real-category")
+
+
+@pytest.mark.django_db
+def test_spending_breakdown_include_transfers_flag():
+    """When include_transfers=True, transfers appear as a slice. By default they don't."""
+    user = User.objects.create_user(username="alice_xfer", password="x")
+    inst = Institution.objects.create(user=user, name="Bank", access_url="https://x")
+    acc = Account.objects.create(
+        institution=inst, name="Chk", type="checking",
+        balance=Decimal("0"), external_id="A",
+    )
+    base = datetime(2026, 4, 15, tzinfo=timezone.utc)
+    Transaction.objects.create(account=acc, posted_at=base, amount=Decimal("-300"),
+        external_id="t1", category="groceries")
+    Transaction.objects.create(account=acc, posted_at=base, amount=Decimal("-500"),
+        external_id="t2", category="transfer")
+
+    # Default: transfers excluded.
+    rows_default = spending_breakdown(user, date(2026, 4, 1), date(2026, 4, 30))
+    keys_default = [r.category for r in rows_default]
+    assert "transfer" not in keys_default
+
+    # With flag: transfers included.
+    rows_with = spending_breakdown(user, date(2026, 4, 1), date(2026, 4, 30), include_transfers=True)
+    keys_with = [r.category for r in rows_with]
+    assert "transfer" in keys_with
+    transfer_row = [r for r in rows_with if r.category == "transfer"][0]
+    assert transfer_row.total == Decimal("500")

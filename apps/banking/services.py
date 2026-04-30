@@ -153,22 +153,37 @@ def _date_to_aware_range(start: _date, end: _date):
     return start_dt, end_dt
 
 
-def spending_breakdown(user, start: _date, end: _date) -> list[CategoryTotal]:
+def spending_breakdown(
+    user,
+    start: _date,
+    end: _date,
+    *,
+    include_transfers: bool = False,
+) -> list[CategoryTotal]:
     """Per-category spending totals for the inclusive [start, end] date range.
-    Excludes income and transfer. Includes 'uncategorized' as a slice (muted).
-    Sorted descending by total. Uses Transaction.display_amount to respect
-    credit/loan sign-flipping."""
+    Excludes income. Excludes transfers by default — pass include_transfers=True
+    to surface them as a slice (the /spending/ page does this so the user can see
+    transfer volume even though it's not real spending).
+    Includes 'uncategorized' as a slice (muted). Sorted descending by total.
+    Uses Transaction.display_amount to respect credit/loan sign-flipping."""
     start_dt, end_dt = _date_to_aware_range(start, end)
+    excluded_categories = list(INCOME_CATEGORIES)
+    if not include_transfers:
+        excluded_categories += list(TRANSFER_CATEGORIES)
     qs = (
         Transaction.objects.for_user(user)
         .filter(posted_at__gte=start_dt, posted_at__lt=end_dt)
-        .exclude(category__in=INCOME_CATEGORIES + TRANSFER_CATEGORIES)
+        .exclude(category__in=excluded_categories)
         .select_related("account")
     )
 
     totals: dict[str, _Decimal] = {}
     for tx in qs:
         amt = tx.display_amount
+        if tx.category in TRANSFER_CATEGORIES:
+            # Transfers can be in or out — count absolute volume regardless of sign.
+            totals[tx.category] = totals.get(tx.category, _Decimal("0")) + abs(amt)
+            continue
         if amt >= 0:
             continue  # not a spend (e.g., refund) — exclude from breakdown
         totals[tx.category] = totals.get(tx.category, _Decimal("0")) + (-amt)

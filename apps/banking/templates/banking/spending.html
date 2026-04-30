@@ -18,36 +18,39 @@
 
 <div class="text-xs mb-4" style="color: var(--muted);">{{ period_label }}</div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-  <div class="rounded border p-4" style="background: var(--surface); border-color: var(--border);">
-    <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--dim);">By category</div>
-    <div class="flex justify-center">{% category_pie rows 200 %}</div>
-  </div>
+<div class="rounded border p-4 mb-6" style="background: var(--surface); border-color: var(--border);">
+  <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--dim);">By category</div>
+  <div class="flex justify-center">{% category_pie rows 260 %}</div>
+</div>
 
-  <div class="rounded border p-4" style="background: var(--surface); border-color: var(--border);">
-    <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--dim);">Income vs Expense</div>
-    {% if income_total or expense_total %}
-      {% with total=income_total|add:expense_total %}
-      <div class="flex h-7 rounded overflow-hidden text-xs">
-        {% if income_total %}<div style="background: var(--accent-positive); color: var(--bg); width: {% widthratio income_total total 100 %}%; padding: 4px 8px; display: flex; align-items: center;">+{{ income_total|money }}</div>{% endif %}
-        {% if expense_total %}<div style="background: var(--accent-negative); color: var(--bg); width: {% widthratio expense_total total 100 %}%; padding: 4px 8px; display: flex; align-items: center;">−{{ expense_total|money }}</div>{% endif %}
-      </div>
-      {% endwith %}
-      <div class="text-xs mt-2" style="color: var(--muted);">
-        Net: <span class="num font-semibold" style="color: {% if net < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">{{ net|money:"signed" }}</span>
-        · Transfers excluded
-      </div>
-    {% else %}
-      <div class="text-sm" style="color: var(--muted);">No data in range.</div>
-    {% endif %}
-  </div>
+<div class="rounded border p-4 mb-6" style="background: var(--surface); border-color: var(--border);">
+  <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--dim);">Income vs Expense</div>
+  {% if income_total or expense_total %}
+    {% with total=income_total|add:expense_total %}
+    <div class="flex h-7 rounded overflow-hidden text-xs">
+      {% if income_total %}<div style="background: var(--accent-positive); color: var(--bg); width: {% widthratio income_total total 100 %}%; padding: 4px 8px; display: flex; align-items: center;">+{{ income_total|money }}</div>{% endif %}
+      {% if expense_total %}<div style="background: var(--accent-negative); color: var(--bg); width: {% widthratio expense_total total 100 %}%; padding: 4px 8px; display: flex; align-items: center;">−{{ expense_total|money }}</div>{% endif %}
+    </div>
+    {% endwith %}
+    <div class="text-xs mt-2" style="color: var(--muted);">
+      Net: <span class="num font-semibold" style="color: {% if net < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">{{ net|money:"signed" }}</span>
+      · Transfers excluded
+    </div>
+  {% else %}
+    <div class="text-sm" style="color: var(--muted);">No data in range.</div>
+  {% endif %}
 </div>
 
 <div class="rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
   <div class="px-4 py-2 text-[10px] uppercase tracking-widest" style="color: var(--dim); border-bottom: 1px solid var(--border);">Categories</div>
   {% for row in rows %}
   <a href="{% url 'transactions' %}?category={{ row.category }}" class="flex items-center justify-between px-4 py-2 text-sm" style="border-top: {% if not forloop.first %}1px solid var(--border){% endif %};">
-    <span>{% category_pill row.category %}</span>
+    <span class="flex items-center gap-2 flex-wrap">
+      {% category_pill row.category %}
+      {% if row.category == "transfer" %}
+        <span class="text-xs italic" style="color: var(--muted);">Not counted in totals</span>
+      {% endif %}
+    </span>
     <span class="num font-semibold">{{ row.total|money }}</span>
   </a>
   {% empty %}
