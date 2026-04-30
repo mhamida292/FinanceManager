@@ -18,26 +18,49 @@
 
 <div class="text-xs mb-4" style="color: var(--muted);">{{ period_label }}</div>
 
-<div class="rounded border p-4 mb-6" style="background: var(--surface); border-color: var(--border);">
-  <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--dim);">By category</div>
-  <div class="flex justify-center">{% category_pie rows 260 %}</div>
-</div>
+<div class="rounded border p-5 mb-6" style="background: var(--surface); border-color: var(--border);">
+  <div class="flex items-center justify-between mb-4">
+    <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">By category</div>
+  </div>
 
-<div class="rounded border p-4 mb-6" style="background: var(--surface); border-color: var(--border);">
-  <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--dim);">Income vs Expense</div>
+  <div class="flex justify-center mb-6">{% category_pie rows 260 %}</div>
+
   {% if income_total or expense_total %}
-    {% with total=income_total|add:expense_total %}
-    <div class="flex h-7 rounded overflow-hidden text-xs">
-      {% if income_total %}<div style="background: var(--accent-positive); color: var(--bg); width: {% widthratio income_total total 100 %}%; padding: 4px 8px; display: flex; align-items: center;">+{{ income_total|money }}</div>{% endif %}
-      {% if expense_total %}<div style="background: var(--accent-negative); color: var(--bg); width: {% widthratio expense_total total 100 %}%; padding: 4px 8px; display: flex; align-items: center;">−{{ expense_total|money }}</div>{% endif %}
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    {% comment %}Income tile{% endcomment %}
+    <div class="rounded p-3 border"
+         style="background: var(--tint-positive); border-color: var(--accent-positive);">
+      <div class="flex items-center gap-2 text-[10px] uppercase tracking-widest" style="color: var(--accent-positive);">
+        <span style="font-size: 14px;">↑</span> Income
+      </div>
+      <div class="num font-bold mt-1 text-lg sm:text-xl truncate" style="color: var(--accent-positive);">
+        +{{ income_total|money }}
+      </div>
     </div>
-    {% endwith %}
-    <div class="text-xs mt-2" style="color: var(--muted);">
-      Net: <span class="num font-semibold" style="color: {% if net < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">{{ net|money:"signed" }}</span>
-      · Transfers excluded
+
+    {% comment %}Expense tile{% endcomment %}
+    <div class="rounded p-3 border"
+         style="background: rgba(192, 136, 104, 0.1); border-color: var(--accent-negative);">
+      <div class="flex items-center gap-2 text-[10px] uppercase tracking-widest" style="color: var(--accent-negative);">
+        <span style="font-size: 14px;">↓</span> Expense
+      </div>
+      <div class="num font-bold mt-1 text-lg sm:text-xl truncate" style="color: var(--accent-negative);">
+        −{{ expense_total|money }}
+      </div>
     </div>
+
+    {% comment %}Net tile{% endcomment %}
+    <div class="rounded p-3 border" style="background: var(--bg); border-color: var(--border);">
+      <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Net</div>
+      <div class="num font-bold mt-1 text-lg sm:text-xl truncate"
+           style="color: {% if net < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+        {{ net|money:"signed" }}
+      </div>
+      <div class="text-[10px] mt-1" style="color: var(--dim);">Transfers excluded</div>
+    </div>
+  </div>
   {% else %}
-    <div class="text-sm" style="color: var(--muted);">No data in range.</div>
+  <div class="text-sm text-center" style="color: var(--muted);">No data in range.</div>
   {% endif %}
 </div>
 
