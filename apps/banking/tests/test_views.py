@@ -477,3 +477,29 @@ def test_spending_page_aggregates_correctly(client):
     response = client.get(reverse("spending"))
     assert response.status_code == 200
     assert b"Groceries" in response.content
+
+
+@pytest.mark.django_db
+def test_transactions_list_filters_by_category(client):
+    user = User.objects.create_user(username="alice_filter", password="x")
+    inst = Institution.objects.create(user=user, name="Bank", access_url="https://x")
+    acc = Account.objects.create(
+        institution=inst, name="Chk", type="checking",
+        balance=Decimal("0"), external_id="A",
+    )
+    Transaction.objects.create(
+        account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-50"), external_id="t1",
+        category="groceries", payee="Whole Foods",
+    )
+    Transaction.objects.create(
+        account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-30"), external_id="t2",
+        category="dining", payee="Sushi Place",
+    )
+
+    client.force_login(user)
+    response = client.get(reverse("transactions") + "?category=groceries")
+    assert response.status_code == 200
+    assert b"Whole Foods" in response.content
+    assert b"Sushi Place" not in response.content

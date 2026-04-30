@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -14,6 +14,10 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
+from .categories import (
+    CATEGORY_LABELS, INCOME_CATEGORIES, SPENDING_CATEGORIES, TRANSFER_CATEGORIES,
+    UNCATEGORIZED,
+)
 from .models import Account, Institution, Transaction
 from .services import income_expense_summary, link_institution, spending_breakdown, sync_institution
 
@@ -273,6 +277,27 @@ def transactions_list(request):
             | Q(memo__icontains=search)
         )
 
+    selected_category = (request.GET.get("category") or "").strip()
+    if selected_category:
+        qs = qs.filter(category=selected_category)
+
+    # Top 5 spending categories by transaction count for this user (for filter pills).
+    top_categories = list(
+        Transaction.objects.for_user(request.user)
+        .filter(category__in=SPENDING_CATEGORIES)
+        .values("category")
+        .annotate(n=Count("id"))
+        .order_by("-n")
+        .values_list("category", flat=True)[:5]
+    )
+    if not top_categories:
+        top_categories = ["groceries", "dining", "transportation", "utilities", "shopping"]
+
+    other_categories = [
+        c for c in (SPENDING_CATEGORIES + INCOME_CATEGORIES + TRANSFER_CATEGORIES + [UNCATEGORIZED])
+        if c not in top_categories
+    ]
+
     paginator = Paginator(qs, 50)
     page_obj = paginator.get_page(request.GET.get("page"))
 
@@ -286,6 +311,8 @@ def transactions_list(request):
         qs_params["range"] = preset
     if search:
         qs_params["q"] = search
+    if selected_category:
+        qs_params["category"] = selected_category
     filter_qs = urlencode(qs_params)
 
     return render(request, "banking/transactions_list.html", {
@@ -296,6 +323,10 @@ def transactions_list(request):
         "search": search,
         "filter_qs": filter_qs,
         "page_window": _page_window(page_obj.number, paginator.num_pages),
+        "selected_category": selected_category,
+        "top_categories": top_categories,
+        "other_categories": other_categories,
+        "category_labels": CATEGORY_LABELS,
     })
 
 

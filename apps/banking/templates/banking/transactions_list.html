@@ -35,6 +35,26 @@
   {% endif %}
 </form>
 
+<div class="mb-4 flex flex-wrap gap-2 items-center text-xs">
+  <span style="color: var(--muted);">Category:</span>
+  <a href="?" class="px-2.5 py-1 rounded {% if not selected_category %}font-bold{% endif %}"
+     style="{% if not selected_category %}background: var(--tint-positive); color: var(--accent-positive);{% else %}border: 1px solid var(--border); color: var(--muted);{% endif %}">All</a>
+  {% for c in top_categories %}
+  <a href="?category={{ c }}" class="px-2.5 py-1 rounded {% if selected_category == c %}font-bold{% endif %}"
+     style="{% if selected_category == c %}background: var(--tint-positive); color: var(--accent-positive);{% else %}border: 1px solid var(--border); color: var(--muted);{% endif %}">{{ c|capfirst }}</a>
+  {% endfor %}
+  {% if other_categories %}
+  <details class="relative">
+    <summary class="cursor-pointer px-2.5 py-1 rounded list-none" style="border: 1px solid var(--border); color: var(--muted);">More ▾</summary>
+    <div class="absolute z-10 mt-1 rounded border p-2 flex flex-col gap-1 text-sm" style="background: var(--surface); border-color: var(--border); min-width: 160px;">
+      {% for c in other_categories %}
+      <a href="?category={{ c }}" class="hover:underline" style="color: var(--muted);">{{ c|capfirst }}</a>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
+</div>
+
 {% if not page_obj.object_list %}
   <div class="rounded border p-6 text-sm" style="background: var(--surface); border-color: var(--border); color: var(--muted);">
     No transactions match your filters.
