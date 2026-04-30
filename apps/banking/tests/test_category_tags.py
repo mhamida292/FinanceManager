@@ -58,14 +58,15 @@ def test_pie_svg_is_donut_with_inner_circle():
     assert svg.count(" A ") >= 2  # at least one outer + one inner arc per slice means 2 arcs minimum
 
 
-def test_pie_svg_has_center_text_for_total():
-    from decimal import Decimal
+def test_pie_svg_has_empty_center_text_by_default():
     rows = [_row("groceries", 100, "#7a9a6a"), _row("dining", 200, "#c08868")]
     svg = category_pie_svg(rows, size=200)
-    # Center label shows total amount.
-    assert "<text" in svg
-    # The total is 300, but format may be $300 or $300.00
-    assert "300" in svg
+    # Center text elements exist for the JS hover handler to populate.
+    assert "center-label-title" in svg
+    assert "center-label-amount" in svg
+    # But by default, no total text is rendered (it appears only on hover via JS).
+    assert "TOTAL" not in svg
+    assert "$300" not in svg
 
 
 def test_pie_svg_has_data_attributes_for_hover():

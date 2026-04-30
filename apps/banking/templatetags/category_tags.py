@@ -97,25 +97,22 @@ def category_pie_svg(rows, size: int = 160) -> str:
             )
             angle = end_angle
 
-    # Center label (two stacked text lines).
+    # Center label (two stacked text lines, empty by default — populated by JS on hover).
     parts.append(
         f'<text class="center-label center-label-title" x="{cx}" y="{cy - 6}" '
         f'text-anchor="middle" dominant-baseline="middle" '
         f'style="font-size: {title_font}px; fill: var(--muted, #888); '
-        f'text-transform: uppercase; letter-spacing: 0.5px;">Total</text>'
+        f'text-transform: uppercase; letter-spacing: 0.5px;"></text>'
     )
     parts.append(
         f'<text class="center-label center-label-amount" x="{cx}" y="{cy + amount_font * 0.6}" '
         f'text-anchor="middle" dominant-baseline="middle" '
-        f'style="font-size: {amount_font}px; font-weight: 600; fill: var(--text, #ddd);">'
-        f'${total:,.2f}</text>'
+        f'style="font-size: {amount_font}px; font-weight: 600; fill: var(--text, #ddd);"></text>'
     )
 
     parts.append('</svg>')
 
     # Hover JS — attached scoped via container ID.
-    default_title = "Total"
-    default_amount = f"${total:,.2f}"
     parts.append(
         f'<script>'
         f'(function() {{'
@@ -130,8 +127,8 @@ def category_pie_svg(rows, size: int = 160) -> str:
         f'      amount.textContent = "$" + parseFloat(s.getAttribute("data-total")).toLocaleString("en-US", {{ minimumFractionDigits: 2, maximumFractionDigits: 2 }}) + " (" + s.getAttribute("data-percent") + "%)";'
         f'    }});'
         f'    s.addEventListener("mouseleave", () => {{'
-        f'      title.textContent = "{default_title}";'
-        f'      amount.textContent = "{default_amount}";'
+        f'      title.textContent = "";'
+        f'      amount.textContent = "";'
         f'    }});'
         f'  }});'
         f'}})();'
