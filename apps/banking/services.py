@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from apps.providers.registry import get as get_provider
 
-from .categories import map_teller_category
+from .categories import is_likely_transfer, map_teller_category
 from .models import Account, Institution, Transaction
 
 
@@ -86,6 +86,9 @@ def sync_institution(institution: Institution) -> SyncResult:
 
             for tx in payload.transactions:
                 mapped_category = map_teller_category(tx.provider_category)
+                # If provider didn't categorize, try heuristic transfer detection.
+                if mapped_category == "uncategorized" and is_likely_transfer(tx.payee, tx.description):
+                    mapped_category = "transfer"
                 defaults = {
                     "posted_at": tx.posted_at,
                     "amount": tx.amount,

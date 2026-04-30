@@ -580,3 +580,89 @@ def test_spending_breakdown_include_transfers_flag():
     assert "transfer" in keys_with
     transfer_row = [r for r in rows_with if r.category == "transfer"][0]
     assert transfer_row.total == Decimal("500")
+
+
+@pytest.mark.django_db
+def test_sync_auto_detects_transfer_when_provider_category_missing():
+    """When provider_category=None and payee matches a transfer pattern,
+    the new transaction is created with category='transfer'."""
+    user = User.objects.create_user(username="alice_xferdetect", password="x")
+
+    class _AutoXferProvider(_FakeProvider):
+        def __init__(self):
+            super().__init__()
+            self._payloads = [
+                AccountSyncPayload(
+                    account=AccountData(
+                        external_id="ACC-1", name="Checking", type="checking",
+                        balance=Decimal("100"), currency="USD", org_name="Bank",
+                    ),
+                    transactions=(
+                        TransactionData(
+                            external_id="TXN-PYMT",
+                            posted_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                            amount=Decimal("-170"), description="",
+                            payee="CAPITAL ONE MOBILE PYMT", memo="", pending=False,
+                            provider_category=None,
+                        ),
+                        TransactionData(
+                            external_id="TXN-COFFEE",
+                            posted_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+                            amount=Decimal("-5"), description="",
+                            payee="Qamaria Yemeni Coffee", memo="", pending=False,
+                            provider_category=None,
+                        ),
+                    ),
+                ),
+            ]
+
+    registry_module._REGISTRY["fake"] = _AutoXferProvider
+    registry_module._REGISTRY["simplefin"] = _AutoXferProvider
+
+    inst = link_institution(
+        user=user, setup_token="t", display_name="Bank", provider_name="fake",
+    )
+    pymt = Transaction.objects.get(account__institution=inst, external_id="TXN-PYMT")
+    coffee = Transaction.objects.get(account__institution=inst, external_id="TXN-COFFEE")
+
+    assert pymt.category == "transfer"  # heuristic caught it
+    assert coffee.category == "uncategorized"  # no pattern match
+
+
+@pytest.mark.django_db
+def test_sync_does_not_override_real_provider_category_with_transfer_heuristic():
+    """If Teller already classified the transaction (non-uncategorized), the
+    transfer heuristic should NOT second-guess Teller."""
+    user = User.objects.create_user(username="alice_xferskip", password="x")
+
+    class _MisLabeledProvider(_FakeProvider):
+        def __init__(self):
+            super().__init__()
+            self._payloads = [
+                AccountSyncPayload(
+                    account=AccountData(
+                        external_id="ACC-1", name="Checking", type="checking",
+                        balance=Decimal("100"), currency="USD", org_name="Bank",
+                    ),
+                    transactions=(
+                        TransactionData(
+                            external_id="TXN-1",
+                            posted_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                            amount=Decimal("-50"), description="",
+                            payee="ZELLE TRANSFER TO SAM", memo="", pending=False,
+                            # Teller (mistakenly?) categorized it as service.
+                            provider_category="service",
+                        ),
+                    ),
+                ),
+            ]
+
+    registry_module._REGISTRY["fake"] = _MisLabeledProvider
+    registry_module._REGISTRY["simplefin"] = _MisLabeledProvider
+
+    inst = link_institution(
+        user=user, setup_token="t", display_name="Bank", provider_name="fake",
+    )
+    tx = Transaction.objects.get(account__institution=inst, external_id="TXN-1")
+    # Teller said "service" → maps to "other" via TELLER_TO_FINLAB. Heuristic doesn't override.
+    assert tx.category == "other"

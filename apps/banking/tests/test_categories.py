@@ -63,3 +63,31 @@ def test_map_teller_category_unknown_falls_through():
 def test_map_teller_category_none_or_empty():
     assert map_teller_category(None) == "uncategorized"
     assert map_teller_category("") == "uncategorized"
+
+
+def test_is_likely_transfer_matches_keywords():
+    from apps.banking.categories import is_likely_transfer
+    assert is_likely_transfer("CAPITAL ONE MOBILE PYMT", "")
+    assert is_likely_transfer("CAPITAL ONE ONLINE PYMT", "")
+    assert is_likely_transfer("CITI", "")
+    assert is_likely_transfer("Zelle to Sam", "")
+    assert is_likely_transfer("VENMO PAYMENT", "")
+    assert is_likely_transfer("WIRE TRANSFER", "")
+    assert is_likely_transfer("Internal transfer", "to savings")
+    assert is_likely_transfer("CARDMEMBER PAYMENT", "AUTOPAY")
+    assert is_likely_transfer("", "TRANSFER FROM CHECKING ****1234")
+
+
+def test_is_likely_transfer_does_not_match_normal_spending():
+    from apps.banking.categories import is_likely_transfer
+    assert not is_likely_transfer("Whole Foods", "groceries")
+    assert not is_likely_transfer("Lyft", "ride")
+    assert not is_likely_transfer("Netflix", "subscription")
+    # ACH alone is not in the pattern list (too noisy).
+    assert not is_likely_transfer("ACH DEBIT", "Comcast")
+
+
+def test_is_likely_transfer_handles_none():
+    from apps.banking.categories import is_likely_transfer
+    assert not is_likely_transfer(None, None)
+    assert not is_likely_transfer("", "")

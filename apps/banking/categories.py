@@ -77,3 +77,40 @@ def map_teller_category(teller_value: str | None) -> str:
     if not teller_value:
         return UNCATEGORIZED
     return TELLER_TO_FINLAB.get(teller_value, UNCATEGORIZED)
+
+
+TRANSFER_PATTERNS = (
+    "TRANSFER",
+    "XFER",
+    "ZELLE",
+    "VENMO",
+    "CASHAPP",
+    "CASH APP",
+    "PAYPAL",
+    "PAY PAL",
+    "WIRE",
+    "INTERNAL TRANSFER",
+    "ONLINE PAYMENT",
+    "MOBILE PAYMENT",
+    "ONLINE PYMT",
+    "MOBILE PYMT",
+    "CARDMEMBER PAYMENT",
+    "AUTOMATIC PAYMENT",
+    "CC PAYMENT",
+    "CREDIT CARD PAYMENT",
+    "PYMT",
+    "CITI",
+    "TO ACCOUNT",
+    "FROM ACCOUNT",
+    "TO CHECKING",
+    "FROM CHECKING",
+    "TO SAVINGS",
+    "FROM SAVINGS",
+)
+
+
+def is_likely_transfer(payee: str | None, description: str | None) -> bool:
+    """Return True if the combined payee + description text matches any
+    known transfer keyword (case-insensitive)."""
+    text = f"{payee or ''} {description or ''}".upper()
+    return any(pat in text for pat in TRANSFER_PATTERNS)
