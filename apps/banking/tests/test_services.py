@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
 from django.contrib.auth import get_user_model
 
 from apps.banking.models import Account, Institution, Transaction
-from apps.banking.services import link_institution, sync_institution
+from apps.banking.services import link_institution, spending_breakdown, sync_institution
 from apps.providers import registry as registry_module
 from apps.providers.base import AccountData, AccountSyncPayload, TransactionData
 
@@ -402,3 +402,83 @@ def test_sync_re_applies_mapping_when_not_manually_overridden():
     tx.refresh_from_db()
     assert tx.category == "groceries"
     assert tx.category_manual is False
+
+
+@pytest.mark.django_db
+def test_spending_breakdown_orders_descending_excludes_income_and_transfer():
+    user = User.objects.create_user(username="alice", password="x")
+    inst = Institution.objects.create(user=user, name="Bank", access_url="https://x")
+    acc = Account.objects.create(
+        institution=inst, name="Chk", type="checking",
+        balance=Decimal("0"), external_id="A1",
+    )
+    base = datetime(2026, 4, 15, tzinfo=timezone.utc)
+    Transaction.objects.create(account=acc, posted_at=base, amount=Decimal("-300"),
+        external_id="t1", category="groceries")
+    Transaction.objects.create(account=acc, posted_at=base, amount=Decimal("-100"),
+        external_id="t2", category="dining")
+    Transaction.objects.create(account=acc, posted_at=base, amount=Decimal("2000"),
+        external_id="t3", category="income")
+    Transaction.objects.create(account=acc, posted_at=base, amount=Decimal("-500"),
+        external_id="t4", category="transfer")
+    Transaction.objects.create(account=acc, posted_at=base, amount=Decimal("-50"),
+        external_id="t5", category="uncategorized")
+
+    rows = spending_breakdown(user, date(2026, 4, 1), date(2026, 4, 30))
+    keys = [r.category for r in rows]
+
+    assert "income" not in keys
+    assert "transfer" not in keys
+    # Descending by total
+    assert keys[0] == "groceries"
+    assert keys[1] == "dining"
+    # Uncategorized is included (call to action)
+    assert "uncategorized" in keys
+
+
+@pytest.mark.django_db
+def test_spending_breakdown_user_isolation():
+    alice = User.objects.create_user(username="alice", password="x")
+    bob = User.objects.create_user(username="bob", password="x")
+    inst_a = Institution.objects.create(user=alice, name="A", access_url="https://x")
+    inst_b = Institution.objects.create(user=bob, name="B", access_url="https://y")
+    acc_a = Account.objects.create(institution=inst_a, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    acc_b = Account.objects.create(institution=inst_b, name="B", type="checking",
+        balance=Decimal("0"), external_id="B")
+    base = datetime(2026, 4, 15, tzinfo=timezone.utc)
+    Transaction.objects.create(account=acc_a, posted_at=base, amount=Decimal("-100"),
+        external_id="t1", category="groceries")
+    Transaction.objects.create(account=acc_b, posted_at=base, amount=Decimal("-9999"),
+        external_id="t2", category="groceries")
+
+    rows = spending_breakdown(alice, date(2026, 4, 1), date(2026, 4, 30))
+    totals = {r.category: r.total for r in rows}
+    assert totals["groceries"] == Decimal("100")
+
+
+@pytest.mark.django_db
+def test_spending_breakdown_credit_card_charge_counts_as_spending():
+    """A credit-card charge has positive raw amount but display_amount is negative.
+    spending_breakdown should treat it as money out (positive total)."""
+    user = User.objects.create_user(username="alice", password="x")
+    inst = Institution.objects.create(user=user, name="Bank", access_url="https://x")
+    cc = Account.objects.create(
+        institution=inst, name="Card", type="credit",
+        balance=Decimal("0"), external_id="CC",
+    )
+    base = datetime(2026, 4, 15, tzinfo=timezone.utc)
+    # Raw +$50 charge on a credit card = $50 spent.
+    Transaction.objects.create(account=cc, posted_at=base, amount=Decimal("50"),
+        external_id="t1", category="dining")
+
+    rows = spending_breakdown(user, date(2026, 4, 1), date(2026, 4, 30))
+    dining = [r for r in rows if r.category == "dining"][0]
+    assert dining.total == Decimal("50")
+
+
+@pytest.mark.django_db
+def test_spending_breakdown_empty_range():
+    user = User.objects.create_user(username="alice", password="x")
+    rows = spending_breakdown(user, date(2026, 4, 1), date(2026, 4, 30))
+    assert rows == []

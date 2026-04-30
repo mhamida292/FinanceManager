@@ -124,3 +124,65 @@ def sync_institution(institution: Institution) -> SyncResult:
         transactions_created=transactions_created,
         transactions_updated=transactions_updated,
     )
+
+
+from dataclasses import dataclass as _dc
+from datetime import date as _date
+from decimal import Decimal as _Decimal
+
+from .categories import (
+    CATEGORY_COLORS, CATEGORY_LABELS, INCOME_CATEGORIES, SPENDING_CATEGORIES,
+    TRANSFER_CATEGORIES, UNCATEGORIZED,
+)
+
+
+@_dc(frozen=True)
+class CategoryTotal:
+    category: str
+    label: str
+    color: str
+    total: _Decimal       # absolute value of money flowing out, always >= 0
+    percent: float        # share of total spending
+
+
+def _date_to_aware_range(start: _date, end: _date):
+    """Convert (start, end) dates to a [start_dt, end_dt) datetime range covering both endpoints inclusive."""
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+    start_dt = _dt.combine(start, _dt.min.time(), tzinfo=_tz.utc)
+    end_dt = _dt.combine(end + _td(days=1), _dt.min.time(), tzinfo=_tz.utc)
+    return start_dt, end_dt
+
+
+def spending_breakdown(user, start: _date, end: _date) -> list[CategoryTotal]:
+    """Per-category spending totals for the inclusive [start, end] date range.
+    Excludes income and transfer. Includes 'uncategorized' as a slice (muted).
+    Sorted descending by total. Uses Transaction.display_amount to respect
+    credit/loan sign-flipping."""
+    start_dt, end_dt = _date_to_aware_range(start, end)
+    qs = (
+        Transaction.objects.for_user(user)
+        .filter(posted_at__gte=start_dt, posted_at__lt=end_dt)
+        .exclude(category__in=INCOME_CATEGORIES + TRANSFER_CATEGORIES)
+        .select_related("account")
+    )
+
+    totals: dict[str, _Decimal] = {}
+    for tx in qs:
+        amt = tx.display_amount
+        if amt >= 0:
+            continue  # not a spend (e.g., refund) — exclude from breakdown
+        totals[tx.category] = totals.get(tx.category, _Decimal("0")) + (-amt)
+
+    grand = sum(totals.values(), _Decimal("0"))
+    rows = [
+        CategoryTotal(
+            category=cat,
+            label=CATEGORY_LABELS[cat],
+            color=CATEGORY_COLORS[cat],
+            total=total,
+            percent=float(total / grand * 100) if grand > 0 else 0.0,
+        )
+        for cat, total in totals.items()
+    ]
+    rows.sort(key=lambda r: r.total, reverse=True)
+    return rows
