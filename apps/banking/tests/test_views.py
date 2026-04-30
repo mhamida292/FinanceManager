@@ -674,3 +674,69 @@ def test_bulk_set_category_returns_count(client):
     import json
     data = json.loads(response.content)
     assert data["updated"] == 3
+
+
+@pytest.mark.django_db
+def test_bulk_set_category_by_filter_requires_login(client):
+    response = client.post(
+        reverse("banking:bulk_set_category_by_filter"),
+        {"category": "groceries", "category_filter": "uncategorized"},
+    )
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_bulk_set_category_by_filter_applies_to_search_matches(client):
+    user = User.objects.create_user(username="alice_filter1", password="x")
+    inst = Institution.objects.create(user=user, name="B", access_url="https://x")
+    acc = Account.objects.create(institution=inst, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    tx1 = Transaction.objects.create(account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-1"), external_id="t1", payee="Whole Foods", category="uncategorized")
+    tx2 = Transaction.objects.create(account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-2"), external_id="t2", payee="Whole Foods Market", category="uncategorized")
+    tx3 = Transaction.objects.create(account=acc, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-3"), external_id="t3", payee="Lyft", category="uncategorized")
+
+    client.force_login(user)
+    response = client.post(
+        reverse("banking:bulk_set_category_by_filter"),
+        {"category": "groceries", "q": "Whole Foods"},
+    )
+    assert response.status_code == 200
+    tx1.refresh_from_db(); tx2.refresh_from_db(); tx3.refresh_from_db()
+    assert tx1.category == "groceries"
+    assert tx1.category_manual is True
+    assert tx2.category == "groceries"
+    assert tx3.category == "uncategorized"  # didn't match the search
+
+
+@pytest.mark.django_db
+def test_bulk_set_category_by_filter_user_isolation(client):
+    alice = User.objects.create_user(username="alice_filter2", password="x")
+    bob = User.objects.create_user(username="bob_filter2", password="x")
+    inst_b = Institution.objects.create(user=bob, name="B", access_url="https://x")
+    acc_b = Account.objects.create(institution=inst_b, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    bob_tx = Transaction.objects.create(account=acc_b, posted_at=datetime.now(dt_tz.utc),
+        amount=Decimal("-1"), external_id="t1", category="uncategorized")
+
+    client.force_login(alice)
+    response = client.post(
+        reverse("banking:bulk_set_category_by_filter"),
+        {"category": "groceries"},  # Alice has no transactions, this should affect 0
+    )
+    assert response.status_code == 200
+    bob_tx.refresh_from_db()
+    assert bob_tx.category == "uncategorized"  # Bob's transaction untouched
+
+
+@pytest.mark.django_db
+def test_bulk_set_category_by_filter_rejects_invalid_category(client):
+    user = User.objects.create_user(username="alice_filter3", password="x")
+    client.force_login(user)
+    response = client.post(
+        reverse("banking:bulk_set_category_by_filter"),
+        {"category": "BOGUS"},
+    )
+    assert response.status_code == 400

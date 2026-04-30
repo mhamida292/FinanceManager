@@ -55,6 +55,49 @@ def _safe_back(request, default: str) -> str:
     return _safe_url(request.META.get("HTTP_REFERER", ""), request, default)
 
 
+def _filtered_transactions_qs(user, params):
+    """Apply the same filter set as the transactions_list view to a Transaction queryset
+    scoped to a user. `params` is a request.GET or request.POST dict-like.
+    Returns the filtered queryset (no pagination). Used by both transactions_list
+    and bulk_set_category_by_filter."""
+    qs = (
+        Transaction.objects
+        .filter(account__institution__user=user)
+        .select_related("account", "account__institution")
+        .order_by("-posted_at", "-id")
+    )
+
+    account_id = params.get("account")
+    if account_id and account_id.isdigit():
+        qs = qs.filter(account_id=int(account_id))
+
+    preset = params.get("range", "")
+    today = timezone.localdate()
+    if preset == "30d":
+        qs = qs.filter(posted_at__gte=today - timedelta(days=30))
+    elif preset == "90d":
+        qs = qs.filter(posted_at__gte=today - timedelta(days=90))
+    elif preset == "ytd":
+        qs = qs.filter(posted_at__gte=today.replace(month=1, day=1))
+    elif preset == "1y":
+        qs = qs.filter(posted_at__gte=today - timedelta(days=365))
+
+    search = (params.get("q") or "").strip()
+    if search:
+        qs = qs.filter(
+            Q(display_name__icontains=search)
+            | Q(payee__icontains=search)
+            | Q(description__icontains=search)
+            | Q(memo__icontains=search)
+        )
+
+    selected_category = (params.get("category") or "").strip()
+    if selected_category:
+        qs = qs.filter(category=selected_category)
+
+    return qs
+
+
 @login_required
 def banks_list(request):
     accounts = (
@@ -245,41 +288,15 @@ def delete_account(request, account_id):
 
 @login_required
 def transactions_list(request):
-    qs = (
-        Transaction.objects
-        .filter(account__institution__user=request.user)
-        .select_related("account", "account__institution")
-        .order_by("-posted_at", "-id")
-    )
+    qs = _filtered_transactions_qs(request.user, request.GET)
 
-    # Filters
+    # Re-extract the filter values for template context (the helper consumed them
+    # but we need them back to render the filter bar with selected values).
     account_id = request.GET.get("account")
-    if account_id and account_id.isdigit():
-        qs = qs.filter(account_id=int(account_id))
-
+    selected_account = int(account_id) if account_id and account_id.isdigit() else None
     preset = request.GET.get("range", "")
-    today = timezone.localdate()
-    if preset == "30d":
-        qs = qs.filter(posted_at__gte=today - timedelta(days=30))
-    elif preset == "90d":
-        qs = qs.filter(posted_at__gte=today - timedelta(days=90))
-    elif preset == "ytd":
-        qs = qs.filter(posted_at__gte=today.replace(month=1, day=1))
-    elif preset == "1y":
-        qs = qs.filter(posted_at__gte=today - timedelta(days=365))
-
     search = (request.GET.get("q") or "").strip()
-    if search:
-        qs = qs.filter(
-            Q(display_name__icontains=search)
-            | Q(payee__icontains=search)
-            | Q(description__icontains=search)
-            | Q(memo__icontains=search)
-        )
-
     selected_category = (request.GET.get("category") or "").strip()
-    if selected_category:
-        qs = qs.filter(category=selected_category)
 
     # Top 5 spending categories by transaction count for this user (for filter pills).
     top_categories = list(
@@ -315,10 +332,13 @@ def transactions_list(request):
         qs_params["category"] = selected_category
     filter_qs = urlencode(qs_params)
 
+    has_any_filter = bool(selected_account or preset or search or selected_category)
+    filtered_count = paginator.count if has_any_filter else 0
+
     return render(request, "banking/transactions_list.html", {
         "page_obj": page_obj,
         "accounts": accounts,
-        "selected_account": int(account_id) if account_id and account_id.isdigit() else None,
+        "selected_account": selected_account,
         "selected_range": preset,
         "search": search,
         "filter_qs": filter_qs,
@@ -327,6 +347,8 @@ def transactions_list(request):
         "top_categories": top_categories,
         "other_categories": other_categories,
         "category_labels": CATEGORY_LABELS,
+        "has_any_filter": has_any_filter,
+        "filtered_count": filtered_count,
     })
 
 
@@ -394,3 +416,19 @@ def spending(request):
         "period": period,
         "period_label": label,
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+def bulk_set_category_by_filter(request):
+    """Set the same category on every transaction matching the filter params.
+    Accepts: POST with `category` (string) and the same filter keys as
+    transactions_list (account, range, q, category).
+    Returns JSON {"updated": N}."""
+    from .categories import ALL_CATEGORIES
+    category = (request.POST.get("category") or "").strip()
+    if category not in ALL_CATEGORIES:
+        return HttpResponseBadRequest(f"Invalid category: {category}")
+    qs = _filtered_transactions_qs(request.user, request.POST)
+    count = qs.update(category=category, category_manual=True)
+    return JsonResponse({"updated": count})

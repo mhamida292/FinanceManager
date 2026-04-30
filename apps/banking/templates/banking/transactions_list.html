@@ -56,6 +56,81 @@
   {% endif %}
 </div>
 
+{% if has_any_filter and filtered_count %}
+<div id="filter-bulk-banner" class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded border p-3"
+     style="background: var(--surface); border-color: var(--border);">
+  <div class="text-sm" style="color: var(--muted);">
+    <span class="font-semibold" style="color: var(--text);">{{ filtered_count }}</span> transaction{{ filtered_count|pluralize }} match this filter.
+  </div>
+  <div class="flex items-center gap-2">
+    <select id="filter-bulk-cat" class="text-sm rounded px-2 py-1.5"
+            style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
+      <option value="">Set all to…</option>
+      <option value="groceries">Groceries</option>
+      <option value="dining">Dining</option>
+      <option value="transportation">Transportation</option>
+      <option value="utilities">Utilities</option>
+      <option value="bills">Bills</option>
+      <option value="housing">Housing</option>
+      <option value="health">Health</option>
+      <option value="entertainment">Entertainment</option>
+      <option value="shopping">Shopping</option>
+      <option value="software">Software</option>
+      <option value="travel">Travel</option>
+      <option value="personal">Personal</option>
+      <option value="charity">Charity</option>
+      <option value="other">Other</option>
+      <option value="income">Income</option>
+      <option value="transfer">Transfer</option>
+      <option value="uncategorized">Uncategorized</option>
+    </select>
+    <button id="filter-bulk-apply" data-count="{{ filtered_count }}" class="text-sm font-bold px-3 py-1.5 rounded"
+            style="background: var(--accent-positive); color: var(--bg);">Apply to all {{ filtered_count }}</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  const apply = document.getElementById("filter-bulk-apply");
+  const select = document.getElementById("filter-bulk-cat");
+  if (!apply || !select) return;
+
+  function getCookie(name) {
+    const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+    return m ? m[2] : null;
+  }
+
+  apply.addEventListener("click", async () => {
+    const category = select.value;
+    if (!category) { select.focus(); return; }
+    const count = apply.dataset.count;
+    const ok = confirm(`Set ${count} transactions to '${category}'? This cannot be undone in bulk.`);
+    if (!ok) return;
+
+    const csrf = getCookie("csrftoken");
+    const fd = new FormData();
+    fd.append("category", category);
+    // Pass current URL filter params through.
+    const url = new URL(window.location.href);
+    for (const [k, v] of url.searchParams.entries()) {
+      if (["account", "range", "q", "category"].includes(k)) {
+        fd.append(k, v);
+      }
+    }
+
+    const resp = await fetch("/banking/transactions/bulk-set-category-by-filter/", {
+      method: "POST", body: fd, headers: { "X-CSRFToken": csrf },
+    });
+    if (resp.ok) {
+      window.location.reload();
+    } else {
+      alert("Bulk update failed: " + resp.status);
+    }
+  });
+})();
+</script>
+{% endif %}
+
 {% if not page_obj.object_list %}
   <div class="rounded border p-6 text-sm" style="background: var(--surface); border-color: var(--border); color: var(--muted);">
     No transactions match your filters.
