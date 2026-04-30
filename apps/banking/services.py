@@ -186,3 +186,27 @@ def spending_breakdown(user, start: _date, end: _date) -> list[CategoryTotal]:
     ]
     rows.sort(key=lambda r: r.total, reverse=True)
     return rows
+
+
+def income_expense_summary(user, start: _date, end: _date) -> tuple[_Decimal, _Decimal]:
+    """Return (income_total, expense_total) for the inclusive [start, end] range.
+    income_total = sum of display_amount where category in INCOME_CATEGORIES.
+    expense_total = abs(sum) of display_amount over SPENDING + UNCATEGORIZED rows
+    where display_amount < 0. Transfers excluded from both."""
+    start_dt, end_dt = _date_to_aware_range(start, end)
+    qs = (
+        Transaction.objects.for_user(user)
+        .filter(posted_at__gte=start_dt, posted_at__lt=end_dt)
+        .exclude(category__in=TRANSFER_CATEGORIES)
+        .select_related("account")
+    )
+    income = _Decimal("0")
+    expense = _Decimal("0")
+    for tx in qs:
+        amt = tx.display_amount
+        if tx.category in INCOME_CATEGORIES:
+            if amt > 0:
+                income += amt
+        elif amt < 0:
+            expense += -amt
+    return income, expense

@@ -5,7 +5,7 @@ import pytest
 from django.contrib.auth import get_user_model
 
 from apps.banking.models import Account, Institution, Transaction
-from apps.banking.services import link_institution, spending_breakdown, sync_institution
+from apps.banking.services import income_expense_summary, link_institution, spending_breakdown, sync_institution
 from apps.providers import registry as registry_module
 from apps.providers.base import AccountData, AccountSyncPayload, TransactionData
 
@@ -482,3 +482,36 @@ def test_spending_breakdown_empty_range():
     user = User.objects.create_user(username="alice", password="x")
     rows = spending_breakdown(user, date(2026, 4, 1), date(2026, 4, 30))
     assert rows == []
+
+
+@pytest.mark.django_db
+def test_income_expense_summary_excludes_transfers():
+    user = User.objects.create_user(username="alice", password="x")
+    inst = Institution.objects.create(user=user, name="Bank", access_url="https://x")
+    acc = Account.objects.create(
+        institution=inst, name="Chk", type="checking",
+        balance=Decimal("0"), external_id="A",
+    )
+    base = datetime(2026, 4, 15, tzinfo=timezone.utc)
+    Transaction.objects.create(account=acc, posted_at=base, amount=Decimal("2000"),
+        external_id="t1", category="income")
+    Transaction.objects.create(account=acc, posted_at=base, amount=Decimal("500"),
+        external_id="t2", category="income")
+    Transaction.objects.create(account=acc, posted_at=base, amount=Decimal("-300"),
+        external_id="t3", category="groceries")
+    Transaction.objects.create(account=acc, posted_at=base, amount=Decimal("-100"),
+        external_id="t4", category="dining")
+    Transaction.objects.create(account=acc, posted_at=base, amount=Decimal("-1000"),
+        external_id="t5", category="transfer")
+
+    income, expense = income_expense_summary(user, date(2026, 4, 1), date(2026, 4, 30))
+    assert income == Decimal("2500")
+    assert expense == Decimal("400")
+
+
+@pytest.mark.django_db
+def test_income_expense_summary_empty_range():
+    user = User.objects.create_user(username="alice", password="x")
+    income, expense = income_expense_summary(user, date(2026, 4, 1), date(2026, 4, 30))
+    assert income == Decimal("0")
+    assert expense == Decimal("0")
