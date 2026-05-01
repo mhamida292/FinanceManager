@@ -740,3 +740,36 @@ def test_bulk_set_category_by_filter_rejects_invalid_category(client):
         {"target_category": "BOGUS"},
     )
     assert response.status_code == 400
+
+
+@pytest.mark.django_db
+def test_spending_page_month_navigation_default_is_current(client):
+    user = User.objects.create_user(username="alice_navmonth1", password="x")
+    client.force_login(user)
+    response = client.get(reverse("spending"))
+    assert response.status_code == 200
+    # Default month: prev_month should be set, next_month should be None (we're on current month).
+    assert response.context["prev_month"] is not None
+    assert response.context["next_month"] is None
+
+
+@pytest.mark.django_db
+def test_spending_page_month_navigation_specific_past_month(client):
+    user = User.objects.create_user(username="alice_navmonth2", password="x")
+    client.force_login(user)
+    response = client.get(reverse("spending") + "?period=month&month=2024-06")
+    assert response.status_code == 200
+    assert response.context["period_label"] == "June 2024"
+    # Prev/next exist for past months.
+    assert response.context["prev_month"] == "2024-05"
+    assert response.context["next_month"] == "2024-07"
+
+
+@pytest.mark.django_db
+def test_spending_page_month_navigation_invalid_falls_back(client):
+    user = User.objects.create_user(username="alice_navmonth3", password="x")
+    client.force_login(user)
+    response = client.get(reverse("spending") + "?period=month&month=garbage")
+    assert response.status_code == 200
+    # Bad input → falls back to current month.
+    assert response.context["next_month"] is None

@@ -389,32 +389,95 @@ def bulk_set_category(request):
     return JsonResponse({"updated": count})
 
 
-def _spending_window(period: str) -> tuple[date, date, str]:
-    """Parse the ?period= query value into (start, end, label).
-    Defaults to current month."""
+def _spending_window(period: str, month_param: str | None = None):
+    """Parse the ?period= and ?month=YYYY-MM query values into context.
+
+    Returns a dict with: start, end, label, period (echoed),
+    prev_month (str YYYY-MM or None), next_month (str YYYY-MM or None).
+    Only returns prev/next for the 'month' period; otherwise both are None.
+    """
     today = date.today()
+
     if period == "30d":
-        return today - timedelta(days=29), today, "Last 30 days"
+        return {
+            "start": today - timedelta(days=29), "end": today,
+            "label": "Last 30 days", "period": "30d",
+            "prev_month": None, "next_month": None,
+        }
+
     if period == "ytd":
-        return date(today.year, 1, 1), today, f"{today.year} YTD"
-    # default: current calendar month
-    start = date(today.year, today.month, 1)
-    return start, today, today.strftime("%B %Y")
+        return {
+            "start": date(today.year, 1, 1), "end": today,
+            "label": f"{today.year} YTD", "period": "ytd",
+            "prev_month": None, "next_month": None,
+        }
+
+    # period == "month" (default)
+    target_year, target_month = today.year, today.month
+    if month_param:
+        try:
+            year_str, month_str = month_param.split("-", 1)
+            y, m = int(year_str), int(month_str)
+            if 1 <= m <= 12 and 1900 <= y <= 9999:
+                target_year, target_month = y, m
+        except (ValueError, AttributeError):
+            pass  # bad input → fall back to current month
+
+    start = date(target_year, target_month, 1)
+    # End of month: last day. Compute as first-of-next-month minus one day.
+    if target_month == 12:
+        next_first = date(target_year + 1, 1, 1)
+    else:
+        next_first = date(target_year, target_month + 1, 1)
+    end = next_first - timedelta(days=1)
+    # If the target month is the current month, cap end at today (so partial-month totals don't double-count
+    # transactions far in the future that may have been pre-dated).
+    if target_year == today.year and target_month == today.month:
+        end = today
+
+    label = start.strftime("%B %Y")
+
+    # Previous month
+    if target_month == 1:
+        prev_y, prev_m = target_year - 1, 12
+    else:
+        prev_y, prev_m = target_year, target_month - 1
+    prev_month = f"{prev_y:04d}-{prev_m:02d}"
+
+    # Next month — None if we're already at the current month (no forward navigation past now).
+    is_current = (target_year == today.year and target_month == today.month)
+    if is_current:
+        next_month = None
+    else:
+        if target_month == 12:
+            next_y, next_m = target_year + 1, 1
+        else:
+            next_y, next_m = target_year, target_month + 1
+        next_month = f"{next_y:04d}-{next_m:02d}"
+
+    return {
+        "start": start, "end": end,
+        "label": label, "period": "month",
+        "prev_month": prev_month, "next_month": next_month,
+    }
 
 
 @login_required
 def spending(request):
     period = request.GET.get("period", "month")
-    start, end, label = _spending_window(period)
-    breakdown = spending_breakdown(request.user, start, end, include_transfers=True)
-    income_total, expense_total = income_expense_summary(request.user, start, end)
+    month_param = request.GET.get("month")
+    window = _spending_window(period, month_param)
+    breakdown = spending_breakdown(request.user, window["start"], window["end"], include_transfers=True)
+    income_total, expense_total = income_expense_summary(request.user, window["start"], window["end"])
     return render(request, "banking/spending.html", {
         "rows": breakdown,
         "income_total": income_total,
         "expense_total": expense_total,
         "net": income_total - expense_total,
-        "period": period,
-        "period_label": label,
+        "period": window["period"],
+        "period_label": window["label"],
+        "prev_month": window["prev_month"],
+        "next_month": window["next_month"],
     })
 
 

@@ -16,7 +16,19 @@
   </div>
 </div>
 
-<div class="text-xs mb-4" style="color: var(--muted);">{{ period_label }}</div>
+<div class="flex items-center gap-3 text-xs mb-4" style="color: var(--muted);">
+  {% if prev_month %}
+    <a href="?period=month&month={{ prev_month }}" class="hover:underline" style="color: var(--accent-positive);" title="Previous month">←</a>
+  {% endif %}
+  <span>{{ period_label }}</span>
+  {% if next_month %}
+    <a href="?period=month&month={{ next_month }}" class="hover:underline" style="color: var(--accent-positive);" title="Next month">→</a>
+  {% else %}
+    {% if period == "month" %}
+      <span style="opacity: 0.3;" title="Already on the current month">→</span>
+    {% endif %}
+  {% endif %}
+</div>
 
 <div class="rounded border p-5 mb-6" style="background: var(--surface); border-color: var(--border);">
   <div class="flex items-center justify-between mb-4">
