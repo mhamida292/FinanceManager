@@ -217,7 +217,7 @@
 
 <script>
 (function() {
-  const SPENDING = ["groceries","dining","transportation","utilities","bills","housing","health","entertainment","shopping","software","travel","personal","charity","other"];
+  const ALL_PICKABLE = ["groceries","dining","transportation","utilities","bills","housing","health","entertainment","shopping","software","travel","personal","charity","other","income","transfer","uncategorized"];
   const popup = document.getElementById("cat-popup");
   const grid = document.getElementById("cat-popup-grid");
   let activeTrigger = null;
@@ -230,7 +230,7 @@
   function openPopup(trigger) {
     activeTrigger = trigger;
     grid.innerHTML = "";
-    SPENDING.forEach(cat => {
+    ALL_PICKABLE.forEach(cat => {
       const item = document.createElement("button");
       item.type = "button";
       item.className = "px-3 py-1.5 rounded hover:bg-[var(--tint-positive)] text-left";
