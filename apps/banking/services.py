@@ -86,8 +86,8 @@ def sync_institution(institution: Institution) -> SyncResult:
 
             for tx in payload.transactions:
                 mapped_category = map_teller_category(tx.provider_category)
-                # If provider didn't categorize, try heuristic transfer detection.
-                if mapped_category == "uncategorized" and is_likely_transfer(tx.payee, tx.description):
+                # If provider's category is generic ("uncategorized" or "other"), try heuristic transfer detection.
+                if mapped_category in ("uncategorized", "other") and is_likely_transfer(tx.payee, tx.description):
                     mapped_category = "transfer"
                 defaults = {
                     "posted_at": tx.posted_at,

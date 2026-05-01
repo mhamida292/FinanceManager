@@ -49,20 +49,22 @@ def test_detect_transfers_skips_manual_overrides():
 
 
 @pytest.mark.django_db
-def test_detect_transfers_skips_already_categorized():
-    """Only uncategorized rows are touched. Existing categories (even non-manual) survive."""
+def test_detect_transfers_skips_already_specific_category():
+    """Rows with a specific non-generic category (e.g. 'dining') survive even if payee matches
+    a transfer pattern, as long as category_manual=False (the command only targets
+    'uncategorized' and 'other')."""
     user = User.objects.create_user(username="alice_dtx3", password="x")
     inst = Institution.objects.create(user=user, name="B", access_url="https://x")
     acc = Account.objects.create(institution=inst, name="A", type="checking",
         balance=Decimal("0"), external_id="A")
     tx = Transaction.objects.create(account=acc, posted_at=datetime.now(timezone.utc),
         amount=Decimal("-50"), external_id="t1",
-        payee="WIRE TRANSFER", category="other", category_manual=False)
+        payee="WIRE TRANSFER", category="dining", category_manual=False)
 
     call_command("detect_transfers", stdout=StringIO())
 
     tx.refresh_from_db()
-    assert tx.category == "other"  # unchanged — was already non-uncategorized
+    assert tx.category == "dining"  # unchanged — specific category not in the gate list
 
 
 @pytest.mark.django_db
@@ -85,3 +87,19 @@ def test_detect_transfers_user_scope():
     a_tx.refresh_from_db(); b_tx.refresh_from_db()
     assert a_tx.category == "transfer"
     assert b_tx.category == "uncategorized"  # bob's row untouched
+
+
+@pytest.mark.django_db
+def test_detect_transfers_also_touches_other_category():
+    user = User.objects.create_user(username="alice_dtxother", password="x")
+    inst = Institution.objects.create(user=user, name="B", access_url="https://x")
+    acc = Account.objects.create(institution=inst, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    tx = Transaction.objects.create(account=acc, posted_at=datetime.now(timezone.utc),
+        amount=Decimal("-100"), external_id="t1",
+        payee="CITI", category="other", category_manual=False)
+
+    call_command("detect_transfers", stdout=StringIO())
+
+    tx.refresh_from_db()
+    assert tx.category == "transfer"

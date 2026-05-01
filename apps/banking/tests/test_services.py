@@ -630,9 +630,9 @@ def test_sync_auto_detects_transfer_when_provider_category_missing():
 
 
 @pytest.mark.django_db
-def test_sync_does_not_override_real_provider_category_with_transfer_heuristic():
-    """If Teller already classified the transaction (non-uncategorized), the
-    transfer heuristic should NOT second-guess Teller."""
+def test_sync_overrides_other_with_transfer_heuristic_when_payee_matches():
+    """If Teller classified a transaction as a vague category that maps to 'other'
+    AND the payee matches a transfer keyword, the heuristic upgrades it to 'transfer'."""
     user = User.objects.create_user(username="alice_xferskip", password="x")
 
     class _MisLabeledProvider(_FakeProvider):
@@ -650,7 +650,7 @@ def test_sync_does_not_override_real_provider_category_with_transfer_heuristic()
                             posted_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
                             amount=Decimal("-50"), description="",
                             payee="ZELLE TRANSFER TO SAM", memo="", pending=False,
-                            # Teller (mistakenly?) categorized it as service.
+                            # Teller used vague "service" → maps to "other"; heuristic upgrades.
                             provider_category="service",
                         ),
                     ),
@@ -664,5 +664,43 @@ def test_sync_does_not_override_real_provider_category_with_transfer_heuristic()
         user=user, setup_token="t", display_name="Bank", provider_name="fake",
     )
     tx = Transaction.objects.get(account__institution=inst, external_id="TXN-1")
-    # Teller said "service" → maps to "other" via TELLER_TO_FINLAB. Heuristic doesn't override.
-    assert tx.category == "other"
+    # Teller said "service" → maps to "other"; heuristic sees ZELLE and upgrades to "transfer".
+    assert tx.category == "transfer"
+
+
+@pytest.mark.django_db
+def test_sync_auto_detects_transfer_when_teller_marks_as_other():
+    """When Teller's category maps to 'other' AND the payee matches a transfer pattern,
+    the sync hook overrides 'other' to 'transfer'."""
+    user = User.objects.create_user(username="alice_xferother", password="x")
+
+    class _MisLabeledOtherProvider(_FakeProvider):
+        def __init__(self):
+            super().__init__()
+            self._payloads = [
+                AccountSyncPayload(
+                    account=AccountData(
+                        external_id="ACC-1", name="Checking", type="checking",
+                        balance=Decimal("100"), currency="USD", org_name="Bank",
+                    ),
+                    transactions=(
+                        TransactionData(
+                            external_id="TXN-PYMT",
+                            posted_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                            amount=Decimal("-100"), description="",
+                            payee="CAPITAL ONE MOBILE PYMT", memo="", pending=False,
+                            # Teller said "service" → maps to "other" via TELLER_TO_FINLAB.
+                            provider_category="service",
+                        ),
+                    ),
+                ),
+            ]
+
+    registry_module._REGISTRY["fake"] = _MisLabeledOtherProvider
+    registry_module._REGISTRY["simplefin"] = _MisLabeledOtherProvider
+
+    inst = link_institution(
+        user=user, setup_token="t", display_name="Bank", provider_name="fake",
+    )
+    tx = Transaction.objects.get(account__institution=inst, external_id="TXN-PYMT")
+    assert tx.category == "transfer"  # heuristic upgraded "other" → "transfer"

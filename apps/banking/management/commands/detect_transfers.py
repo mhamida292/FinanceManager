@@ -15,7 +15,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         username = options.get("user")
         qs = Transaction.objects.filter(
-            category="uncategorized", category_manual=False,
+            category__in=["uncategorized", "other"], category_manual=False,
         )
         if username:
             qs = qs.filter(account__institution__user__username=username)
