@@ -135,9 +135,13 @@ class TellerProvider:
     def _parse_transaction(self, raw: dict) -> TransactionData:
         details = raw.get("details") or {}
         counterparty = details.get("counterparty") or {}
+        # Teller returns a date-only string. Anchor to NOON UTC so the date
+        # survives ±12h timezone shifts when rendered in any local zone (a
+        # midnight-UTC anchor would render as the previous day in any zone west
+        # of UTC, causing dates to appear off-by-one for US users).
         posted_at = datetime.combine(
             datetime.strptime(str(raw["date"]), "%Y-%m-%d").date(),
-            time.min, tzinfo=timezone.utc,
+            time(12, 0), tzinfo=timezone.utc,
         )
         return TransactionData(
             external_id=str(raw["id"]),
