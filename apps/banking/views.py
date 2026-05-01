@@ -468,9 +468,11 @@ def spending(request):
     month_param = request.GET.get("month")
     window = _spending_window(period, month_param)
     breakdown = spending_breakdown(request.user, window["start"], window["end"], include_transfers=True)
+    pie_rows = [r for r in breakdown if r.category != "transfer"]
     income_total, expense_total = income_expense_summary(request.user, window["start"], window["end"])
     return render(request, "banking/spending.html", {
         "rows": breakdown,
+        "pie_rows": pie_rows,
         "income_total": income_total,
         "expense_total": expense_total,
         "net": income_total - expense_total,
