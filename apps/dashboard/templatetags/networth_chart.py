@@ -78,7 +78,7 @@ def networth_chart_svg(values: Iterable[Decimal], days: int = 30, width: int = 6
     )
     parts.append(
         f'<svg class="nw-chart nw-chart-{scope}" viewBox="0 0 {width} {height}" '
-        f'preserveAspectRatio="xMidYMid meet" '
+        f'preserveAspectRatio="none" '
         f'style="width: 100%; height: {height}px; display: block;" '
         f'xmlns="http://www.w3.org/2000/svg">'
     )
