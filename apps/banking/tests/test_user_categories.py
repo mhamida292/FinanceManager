@@ -76,7 +76,9 @@ def test_categories_settings_add_rejects_reserved_slug(client):
     user = User.objects.create_user(username="alice_uc6", password="x")
     client.force_login(user)
     client.post(reverse("banking:categories_settings"), {
-        "action": "add", "label": "Groceries", "color": "#aaa",
+        # Valid 7-char color so the color validator passes — we want to
+        # exercise the slug-reservation check specifically.
+        "action": "add", "label": "Groceries", "color": "#aabbcc",
     })
     # Should be rejected because slug "groceries" is reserved.
     assert UserCategory.objects.filter(user=user).count() == 0
