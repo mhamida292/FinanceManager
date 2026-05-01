@@ -16,6 +16,14 @@
   <p class="text-sm" style="color: var(--muted);">Signed in as <strong style="color: var(--text);">{{ user.username }}</strong>.</p>
 </div>
 
+<div class="rounded border p-5 mb-6 flex items-center justify-between" style="background: var(--surface); border-color: var(--border);">
+  <div>
+    <div class="font-medium">Custom categories</div>
+    <div class="text-xs" style="color: var(--muted);">Add your own spending categories alongside the built-in ones.</div>
+  </div>
+  <a href="{% url 'banking:categories_settings' %}" class="text-sm font-bold px-3 py-1.5 rounded" style="background: var(--accent-positive); color: var(--bg);">Manage →</a>
+</div>
+
 <div class="flex items-center justify-between mb-3">
   <h2 class="text-lg font-semibold">External connections</h2>
   <a href="{% url 'banking:link' %}" class="font-bold px-3 py-1.5 rounded text-sm" style="background: var(--accent-positive); color: var(--bg);">+ Link account</a>
