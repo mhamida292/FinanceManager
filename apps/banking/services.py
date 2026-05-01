@@ -191,12 +191,14 @@ def spending_breakdown(
             continue  # not a spend (e.g., refund) — exclude from breakdown
         totals[tx.category] = totals.get(tx.category, _Decimal("0")) + (-amt)
 
+    from .categories import get_user_categories
+    catmap = get_user_categories(user)
     grand = sum(totals.values(), _Decimal("0"))
     rows = [
         CategoryTotal(
             category=cat,
-            label=CATEGORY_LABELS[cat],
-            color=CATEGORY_COLORS[cat],
+            label=catmap.get(cat, {"label": cat.title()})["label"],
+            color=catmap.get(cat, {"color": "#888888"})["color"],
             total=total,
             percent=float(total / grand * 100) if grand > 0 else 0.0,
         )
@@ -232,8 +234,11 @@ def income_expense_summary(user, start: _date, end: _date) -> tuple[_Decimal, _D
 
 def set_category(transaction: "Transaction", category: str) -> "Transaction":
     """Set the category on a transaction and flag it as user-overridden.
-    Raises ValueError if `category` is not a valid category key."""
-    if category not in ALL_CATEGORIES:
+    Raises ValueError if `category` is not a built-in or one of the transaction's
+    user's custom categories."""
+    from .categories import is_valid_category_for_user
+    user = transaction.account.institution.user
+    if not is_valid_category_for_user(user, category):
         raise ValueError(f"Unknown category: {category}")
     transaction.category = category
     transaction.category_manual = True

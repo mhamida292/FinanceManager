@@ -114,3 +114,56 @@ def is_likely_transfer(payee: str | None, description: str | None) -> bool:
     known transfer keyword (case-insensitive)."""
     text = f"{payee or ''} {description or ''}".upper()
     return any(pat in text for pat in TRANSFER_PATTERNS)
+
+
+COLOR_PALETTE = [
+    "#7a9a6a", "#c08868", "#8a8aaa", "#c8a868", "#a87a8a",
+    "#6a8a9a", "#9b6a7a", "#a89a6a", "#7a6a9a", "#6a9a8a",
+    "#9a8a6a", "#aa7aaa", "#7aaa9a", "#888888",
+]
+
+
+def get_user_categories(user) -> dict[str, dict]:
+    """Return merged dict {slug: {"label": str, "color": str, "kind": str, "custom": bool}}
+    of built-in categories + user's custom categories. `kind` is one of:
+    'spending', 'income', 'transfer', 'system' (uncategorized)."""
+    result: dict[str, dict] = {}
+    for slug in ALL_CATEGORIES:
+        if slug in INCOME_CATEGORIES:
+            kind = "income"
+        elif slug in TRANSFER_CATEGORIES:
+            kind = "transfer"
+        elif slug == UNCATEGORIZED:
+            kind = "system"
+        else:
+            kind = "spending"
+        result[slug] = {
+            "label": CATEGORY_LABELS[slug],
+            "color": CATEGORY_COLORS[slug],
+            "kind": kind,
+            "custom": False,
+        }
+    if user is not None and getattr(user, "is_authenticated", False):
+        from apps.banking.models import UserCategory
+        for uc in UserCategory.objects.filter(user=user):
+            result[uc.slug] = {
+                "label": uc.label,
+                "color": uc.color,
+                "kind": "spending",
+                "custom": True,
+            }
+    return result
+
+
+def is_valid_category_for_user(user, slug: str) -> bool:
+    """True if slug is a built-in category OR a custom category owned by user."""
+    if slug in ALL_CATEGORIES:
+        return True
+    if user is None or not getattr(user, "is_authenticated", False):
+        return False
+    from apps.banking.models import UserCategory
+    return UserCategory.objects.filter(user=user, slug=slug).exists()
+
+
+# Reserved slugs cannot be used for custom categories.
+RESERVED_SLUGS = frozenset(ALL_CATEGORIES)

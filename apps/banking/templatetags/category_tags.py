@@ -149,10 +149,17 @@ def category_pie_svg(rows, size: int = 160) -> str:
     return mark_safe("".join(parts))
 
 
-def category_pill_html(category: str) -> str:
-    """Render a colored pill for a category key."""
-    color = CATEGORY_COLORS.get(category, "#888888")
-    label = CATEGORY_LABELS.get(category, category.title())
+def category_pill_html(category: str, user=None) -> str:
+    """Render a colored pill for a category key. Pass user to look up custom categories."""
+    from apps.banking.categories import get_user_categories
+    catmap = get_user_categories(user) if user else {}
+    info = catmap.get(category)
+    if info:
+        color = info["color"]
+        label = info["label"]
+    else:
+        color = CATEGORY_COLORS.get(category, "#888888")
+        label = CATEGORY_LABELS.get(category, category.title())
     return mark_safe(
         f'<span class="category-pill" style="background-color: {color}22; color: {color}; '
         f'padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500;">'
@@ -165,6 +172,8 @@ def category_pie(rows, size=160):
     return category_pie_svg(rows, size=int(size))
 
 
-@register.simple_tag
-def category_pill(category):
-    return category_pill_html(category)
+@register.simple_tag(takes_context=True)
+def category_pill(context, category):
+    request = context.get("request")
+    user = getattr(request, "user", None) if request else None
+    return category_pill_html(category, user=user)

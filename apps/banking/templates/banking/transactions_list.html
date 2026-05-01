@@ -66,23 +66,9 @@
     <select id="filter-bulk-cat" class="text-sm rounded px-2 py-1.5"
             style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
       <option value="">Set all to…</option>
-      <option value="groceries">Groceries</option>
-      <option value="dining">Dining</option>
-      <option value="transportation">Transportation</option>
-      <option value="utilities">Utilities</option>
-      <option value="bills">Bills</option>
-      <option value="housing">Housing</option>
-      <option value="health">Health</option>
-      <option value="entertainment">Entertainment</option>
-      <option value="shopping">Shopping</option>
-      <option value="software">Software</option>
-      <option value="travel">Travel</option>
-      <option value="personal">Personal</option>
-      <option value="charity">Charity</option>
-      <option value="other">Other</option>
-      <option value="income">Income</option>
-      <option value="transfer">Transfer</option>
-      <option value="uncategorized">Uncategorized</option>
+      {% for cat in pickable_categories %}
+      <option value="{{ cat.slug }}">{{ cat.label }}</option>
+      {% endfor %}
     </select>
     <button id="filter-bulk-apply" data-count="{{ filtered_count }}" class="text-sm font-bold px-3 py-1.5 rounded"
             style="background: var(--accent-positive); color: var(--bg);">Apply to all {{ filtered_count }}</button>
@@ -215,9 +201,15 @@
   <div id="cat-popup-grid" class="grid grid-cols-2 gap-1 text-sm"></div>
 </div>
 
+{{ pickable_categories|json_script:"pickable-categories-data" }}
+
+<script>
+window.PICKABLE_CATEGORIES = JSON.parse(document.getElementById("pickable-categories-data").textContent);
+</script>
+
 <script>
 (function() {
-  const ALL_PICKABLE = ["groceries","dining","transportation","utilities","bills","housing","health","entertainment","shopping","software","travel","personal","charity","other","income","transfer","uncategorized"];
+  const ALL_PICKABLE = window.PICKABLE_CATEGORIES;
   const popup = document.getElementById("cat-popup");
   const grid = document.getElementById("cat-popup-grid");
   let activeTrigger = null;
@@ -230,12 +222,12 @@
   function openPopup(trigger) {
     activeTrigger = trigger;
     grid.innerHTML = "";
-    ALL_PICKABLE.forEach(cat => {
+    ALL_PICKABLE.forEach(catObj => {
       const item = document.createElement("button");
       item.type = "button";
       item.className = "px-3 py-1.5 rounded hover:bg-[var(--tint-positive)] text-left";
-      item.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
-      item.addEventListener("click", () => assignCategory(cat));
+      item.textContent = catObj.label;
+      item.addEventListener("click", () => assignCategory(catObj.slug));
       grid.appendChild(item);
     });
     // Show off-screen first so we can measure its rendered size, then position.
@@ -304,23 +296,9 @@
     <select id="bulk-category" class="text-sm rounded px-2 py-1.5"
             style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
       <option value="">Set to…</option>
-      <option value="groceries">Groceries</option>
-      <option value="dining">Dining</option>
-      <option value="transportation">Transportation</option>
-      <option value="utilities">Utilities</option>
-      <option value="bills">Bills</option>
-      <option value="housing">Housing</option>
-      <option value="health">Health</option>
-      <option value="entertainment">Entertainment</option>
-      <option value="shopping">Shopping</option>
-      <option value="software">Software</option>
-      <option value="travel">Travel</option>
-      <option value="personal">Personal</option>
-      <option value="charity">Charity</option>
-      <option value="other">Other</option>
-      <option value="income">Income</option>
-      <option value="transfer">Transfer</option>
-      <option value="uncategorized">Uncategorized</option>
+      {% for cat in pickable_categories %}
+      <option value="{{ cat.slug }}">{{ cat.label }}</option>
+      {% endfor %}
     </select>
     <button id="bulk-apply" class="text-sm font-bold px-3 py-1.5 rounded"
             style="background: var(--accent-positive); color: var(--bg);">Apply</button>

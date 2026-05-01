@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Manage Categories{% endblock %}
+{% block content %}
+
+<div class="mb-6">
+  <h1 class="text-2xl font-bold mb-1">Custom Categories</h1>
+  <p class="text-sm" style="color: var(--muted);">
+    Add your own spending categories alongside the built-in ones.
+    They show up in pickers, the breakdown chart, and the transactions list.
+  </p>
+</div>
+
+{% if messages %}
+{% for message in messages %}
+<div class="mb-3 px-3 py-2 rounded text-sm" style="background: var(--surface); border: 1px solid var(--border);">{{ message }}</div>
+{% endfor %}
+{% endif %}
+
+{# Add new category form #}
+<div class="rounded border p-4 mb-6" style="background: var(--surface); border-color: var(--border);">
+  <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--dim);">Add a category</div>
+  <form method="post" class="flex flex-wrap items-center gap-3">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add">
+    <input type="text" name="label" placeholder="Category name (e.g. Pets)" required maxlength="50"
+           class="text-sm rounded px-3 py-1.5 flex-1 min-w-[180px]"
+           style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
+    <div class="flex items-center gap-1" id="color-swatches">
+      {% for c in color_palette %}
+      <label class="cursor-pointer" title="{{ c }}">
+        <input type="radio" name="color" value="{{ c }}" {% if forloop.first %}checked{% endif %} class="sr-only peer">
+        <span class="block w-6 h-6 rounded peer-checked:ring-2 peer-checked:ring-[var(--accent-positive)]"
+              style="background: {{ c }};"></span>
+      </label>
+      {% endfor %}
+    </div>
+    <button type="submit" class="text-sm font-bold px-3 py-1.5 rounded"
+            style="background: var(--accent-positive); color: var(--bg);">Add</button>
+  </form>
+</div>
+
+{# Existing custom categories list #}
+<div class="rounded border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+  <div class="px-4 py-2 text-[10px] uppercase tracking-widest" style="color: var(--dim); border-bottom: 1px solid var(--border);">
+    Your categories ({{ custom_categories|length }})
+  </div>
+  {% if custom_categories %}
+    {% for cat in custom_categories %}
+    <div class="px-4 py-3 flex items-center gap-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
+      <span style="display: inline-block; width: 12px; height: 12px; background: {{ cat.color }}; border-radius: 2px;"></span>
+      <span class="font-medium flex-1">{{ cat.label }}</span>
+      <span class="text-xs" style="color: var(--muted);">{{ cat.slug }}</span>
+      <form method="post" style="display: inline;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="id" value="{{ cat.id }}">
+        <button type="submit" class="text-xs px-2 py-1 rounded hover:underline"
+                style="color: var(--accent-negative);"
+                onclick="return confirm('Delete \'{{ cat.label }}\'? Any transactions in it will be reset to Uncategorized.');">Delete</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="px-4 py-6 text-sm" style="color: var(--muted);">No custom categories yet.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

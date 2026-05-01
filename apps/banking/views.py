@@ -18,7 +18,7 @@ from .categories import (
     CATEGORY_LABELS, INCOME_CATEGORIES, SPENDING_CATEGORIES, TRANSFER_CATEGORIES,
     UNCATEGORIZED,
 )
-from .models import Account, Institution, Transaction
+from .models import Account, Institution, Transaction, UserCategory
 from .services import income_expense_summary, link_institution, set_category as set_category_service, spending_breakdown, sync_institution
 
 
@@ -335,6 +335,18 @@ def transactions_list(request):
     has_any_filter = bool(selected_account or preset or search or selected_category)
     filtered_count = paginator.count if has_any_filter else 0
 
+    from .categories import get_user_categories
+    catmap = get_user_categories(request.user)
+    # Order: spending (sorted by label), then income, transfer, uncategorized
+    spending_entries = sorted(
+        [(slug, info) for slug, info in catmap.items() if info["kind"] == "spending"],
+        key=lambda x: x[1]["label"].lower(),
+    )
+    pickable_categories = (
+        [{"slug": s, "label": i["label"], "color": i["color"]} for s, i in spending_entries]
+        + [{"slug": s, "label": catmap[s]["label"], "color": catmap[s]["color"]} for s in ["income", "transfer", "uncategorized"] if s in catmap]
+    )
+
     return render(request, "banking/transactions_list.html", {
         "page_obj": page_obj,
         "accounts": accounts,
@@ -349,6 +361,7 @@ def transactions_list(request):
         "category_labels": CATEGORY_LABELS,
         "has_any_filter": has_any_filter,
         "filtered_count": filtered_count,
+        "pickable_categories": pickable_categories,
     })
 
 
@@ -364,7 +377,7 @@ def set_category(request, transaction_id):
     except ValueError as exc:
         return HttpResponseBadRequest(str(exc))
     from .templatetags.category_tags import category_pill_html
-    return HttpResponse(category_pill_html(tx.category))
+    return HttpResponse(category_pill_html(tx.category, user=request.user))
 
 
 @login_required
@@ -373,9 +386,9 @@ def bulk_set_category(request):
     """Set the same category on a list of transactions in one shot.
     Accepts: POST with `category` (string) and `transaction_ids` (list of ints).
     Returns JSON {"updated": N} where N is the number of rows actually updated."""
-    from .categories import ALL_CATEGORIES
+    from .categories import is_valid_category_for_user
     category = (request.POST.get("category") or "").strip()
-    if category not in ALL_CATEGORIES:
+    if not is_valid_category_for_user(request.user, category):
         return HttpResponseBadRequest(f"Invalid category: {category}")
     raw_ids = request.POST.getlist("transaction_ids")
     if not raw_ids:
@@ -490,10 +503,72 @@ def bulk_set_category_by_filter(request):
     Accepts: POST with `target_category` (string) and the same filter keys as
     transactions_list (account, range, q, category).
     Returns JSON {"updated": N}."""
-    from .categories import ALL_CATEGORIES
+    from .categories import is_valid_category_for_user
     target_category = (request.POST.get("target_category") or "").strip()
-    if target_category not in ALL_CATEGORIES:
+    if not is_valid_category_for_user(request.user, target_category):
         return HttpResponseBadRequest(f"Invalid target category: {target_category}")
     qs = _filtered_transactions_qs(request.user, request.POST)
     count = qs.update(category=target_category, category_manual=True)
     return JsonResponse({"updated": count})
+
+
+@login_required
+def categories_settings(request):
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        if action == "add":
+            label = (request.POST.get("label") or "").strip()
+            color = (request.POST.get("color") or "").strip()
+            if not label:
+                messages.error(request, "Label is required.")
+            elif not color or not color.startswith("#") or len(color) != 7:
+                messages.error(request, "Color must be a 7-character hex like #7a9a6a.")
+            else:
+                from django.utils.text import slugify
+                slug = slugify(label)[:30] or "custom"
+                from .categories import RESERVED_SLUGS
+                if slug in RESERVED_SLUGS:
+                    messages.error(request, f"'{label}' conflicts with a built-in category.")
+                elif UserCategory.objects.filter(user=request.user, slug=slug).exists():
+                    messages.error(request, f"You already have a category with slug '{slug}'.")
+                else:
+                    UserCategory.objects.create(user=request.user, slug=slug, label=label, color=color)
+                    messages.success(request, f"Added '{label}'.")
+        elif action == "edit":
+            cat_id = request.POST.get("id")
+            label = (request.POST.get("label") or "").strip()
+            color = (request.POST.get("color") or "").strip()
+            try:
+                cat = UserCategory.objects.get(pk=int(cat_id), user=request.user)
+            except (UserCategory.DoesNotExist, ValueError, TypeError):
+                messages.error(request, "Category not found.")
+            else:
+                if label:
+                    cat.label = label
+                if color and color.startswith("#") and len(color) == 7:
+                    cat.color = color
+                cat.save(update_fields=["label", "color"])
+                messages.success(request, f"Updated '{cat.label}'.")
+        elif action == "delete":
+            cat_id = request.POST.get("id")
+            try:
+                cat = UserCategory.objects.get(pk=int(cat_id), user=request.user)
+            except (UserCategory.DoesNotExist, ValueError, TypeError):
+                messages.error(request, "Category not found.")
+            else:
+                slug = cat.slug
+                label = cat.label
+                # Reassign affected transactions to "uncategorized".
+                Transaction.objects.filter(
+                    account__institution__user=request.user, category=slug,
+                ).update(category="uncategorized", category_manual=False)
+                cat.delete()
+                messages.success(request, f"Deleted '{label}'. Affected transactions reset to Uncategorized.")
+        return HttpResponseRedirect(reverse("banking:categories_settings"))
+
+    custom = list(UserCategory.objects.filter(user=request.user).order_by("label"))
+    from .categories import COLOR_PALETTE
+    return render(request, "banking/categories_settings.html", {
+        "custom_categories": custom,
+        "color_palette": COLOR_PALETTE,
+    })

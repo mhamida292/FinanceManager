@@ -669,6 +669,38 @@ def test_sync_overrides_other_with_transfer_heuristic_when_payee_matches():
 
 
 @pytest.mark.django_db
+def test_set_category_accepts_user_custom_category():
+    from apps.banking.models import UserCategory
+    user = User.objects.create_user(username="alice_setcustom", password="x")
+    UserCategory.objects.create(user=user, slug="pets", label="Pets", color="#aaa")
+    inst = Institution.objects.create(user=user, name="B", access_url="https://x")
+    acc = Account.objects.create(institution=inst, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    tx = Transaction.objects.create(account=acc, posted_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        amount=Decimal("-10"), external_id="t1")
+    set_category(tx, "pets")
+    tx.refresh_from_db()
+    assert tx.category == "pets"
+    assert tx.category_manual is True
+
+
+@pytest.mark.django_db
+def test_set_category_rejects_other_users_custom_category():
+    from apps.banking.models import UserCategory
+    alice = User.objects.create_user(username="alice_isol", password="x")
+    bob = User.objects.create_user(username="bob_isol", password="x")
+    UserCategory.objects.create(user=alice, slug="pets", label="Pets", color="#aaa")
+
+    bob_inst = Institution.objects.create(user=bob, name="B", access_url="https://x")
+    bob_acc = Account.objects.create(institution=bob_inst, name="A", type="checking",
+        balance=Decimal("0"), external_id="A")
+    bob_tx = Transaction.objects.create(account=bob_acc, posted_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        amount=Decimal("-10"), external_id="t1")
+    with pytest.raises(ValueError):
+        set_category(bob_tx, "pets")
+
+
+@pytest.mark.django_db
 def test_sync_auto_detects_transfer_when_teller_marks_as_other():
     """When Teller's category maps to 'other' AND the payee matches a transfer pattern,
     the sync hook overrides 'other' to 'transfer'."""

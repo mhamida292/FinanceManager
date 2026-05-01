@@ -6,6 +6,30 @@ from .fields import EncryptedTextField
 from .managers import UserScopedQuerySet
 
 
+class UserCategory(models.Model):
+    """Per-user spending category. Augments the 14 built-in spending categories
+    in apps.banking.categories with user-defined ones. Built-ins (income,
+    transfer, etc.) cannot be overridden — those slugs are reserved."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name="custom_categories",
+    )
+    slug = models.SlugField(max_length=30, help_text="Lowercase identifier; unique per user.")
+    label = models.CharField(max_length=50, help_text="Display name shown in UI.")
+    color = models.CharField(max_length=10, help_text="Hex color like '#7a9a6a'.")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["label"]
+        constraints = [
+            models.UniqueConstraint(fields=["user", "slug"], name="uniq_usercategory_slug_per_user"),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username}/{self.slug}"
+
+
 class InstitutionQuerySet(UserScopedQuerySet):
     def for_user(self, user):
         return self.filter(user=user)
