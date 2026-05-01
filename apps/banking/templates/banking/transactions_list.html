@@ -30,6 +30,9 @@
 
   <input type="search" name="q" value="{{ search }}" placeholder="Search payee / memo" class="text-sm rounded px-3 py-1.5 flex-1 min-w-[150px]" style="background: var(--bg); border: 1px solid var(--border); color: var(--text);">
 
+  {# Preserve the active category-pill filter when the form is submitted. #}
+  {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
+
   <button type="submit" class="text-sm font-bold px-3 py-1.5 rounded" style="background: var(--accent-positive); color: var(--bg);">Apply</button>
   {% if selected_account or selected_range or search %}
     <a href="{% url 'transactions' %}" class="text-sm" style="color: var(--muted);">Clear</a>
@@ -38,10 +41,10 @@
 
 <div class="mb-4 flex flex-wrap gap-2 items-center text-xs">
   <span style="color: var(--muted);">Category:</span>
-  <a href="?" class="px-2.5 py-1 rounded {% if not selected_category %}font-bold{% endif %}"
+  <a href="?{{ filter_qs_no_category }}" class="px-2.5 py-1 rounded {% if not selected_category %}font-bold{% endif %}"
      style="{% if not selected_category %}background: var(--tint-positive); color: var(--accent-positive);{% else %}border: 1px solid var(--border); color: var(--muted);{% endif %}">All</a>
   {% for c in top_categories %}
-  <a href="?category={{ c }}" class="px-2.5 py-1 rounded {% if selected_category == c %}font-bold{% endif %}"
+  <a href="?{% if filter_qs_no_category %}{{ filter_qs_no_category }}&{% endif %}category={{ c }}" class="px-2.5 py-1 rounded {% if selected_category == c %}font-bold{% endif %}"
      style="{% if selected_category == c %}background: var(--tint-positive); color: var(--accent-positive);{% else %}border: 1px solid var(--border); color: var(--muted);{% endif %}">{{ c|capfirst }}</a>
   {% endfor %}
   {% if other_categories %}
@@ -49,7 +52,7 @@
     <summary class="cursor-pointer px-2.5 py-1 rounded list-none" style="border: 1px solid var(--border); color: var(--muted);">More ▾</summary>
     <div class="absolute z-10 mt-1 rounded border p-2 flex flex-col gap-1 text-sm" style="background: var(--surface); border-color: var(--border); min-width: 160px;">
       {% for c in other_categories %}
-      <a href="?category={{ c }}" class="hover:underline" style="color: var(--muted);">{{ c|capfirst }}</a>
+      <a href="?{% if filter_qs_no_category %}{{ filter_qs_no_category }}&{% endif %}category={{ c }}" class="hover:underline" style="color: var(--muted);">{{ c|capfirst }}</a>
       {% endfor %}
     </div>
   </details>

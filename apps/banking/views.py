@@ -332,6 +332,12 @@ def transactions_list(request):
         qs_params["category"] = selected_category
     filter_qs = urlencode(qs_params)
 
+    # Same params but without `category`. Used by the category-pill links so
+    # clicking a pill preserves account/range/q while only swapping the
+    # category filter — otherwise picking a pill drops your other filters.
+    qs_no_category = {k: v for k, v in qs_params.items() if k != "category"}
+    filter_qs_no_category = urlencode(qs_no_category)
+
     has_any_filter = bool(selected_account or preset or search or selected_category)
     filtered_count = paginator.count if has_any_filter else 0
 
@@ -354,6 +360,7 @@ def transactions_list(request):
         "selected_range": preset,
         "search": search,
         "filter_qs": filter_qs,
+        "filter_qs_no_category": filter_qs_no_category,
         "page_window": _page_window(page_obj.number, paginator.num_pages),
         "selected_category": selected_category,
         "top_categories": top_categories,
