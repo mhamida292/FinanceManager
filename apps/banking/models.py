@@ -174,3 +174,31 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.posted_at:%Y-%m-%d} {self.amount} {self.effective_payee}"
+
+
+class AccountBalanceSnapshot(models.Model):
+    """Daily end-of-day balance for an account. Raw provider balance — apply
+    Account.display_balance logic at read time for user-facing values."""
+
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name="balance_snapshots",
+    )
+    date = models.DateField(db_index=True)
+    balance = models.DecimalField(max_digits=14, decimal_places=2)
+
+    class Meta:
+        ordering = ["-date"]
+        constraints = [
+            models.UniqueConstraint(fields=["account", "date"], name="uniq_balance_snapshot_per_day"),
+        ]
+
+    def __str__(self):
+        return f"{self.account_id} on {self.date}: {self.balance}"
+
+    @property
+    def display_balance(self):
+        """Same sign-flip logic as Account.display_balance — credit/loan
+        accounts render as negative regardless of how the provider signed them."""
+        if self.account.type in ("credit", "loan"):
+            return -abs(self.balance)
+        return self.balance

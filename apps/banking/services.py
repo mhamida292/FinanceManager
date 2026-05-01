@@ -84,6 +84,15 @@ def sync_institution(institution: Institution) -> SyncResult:
             else:
                 accounts_updated += 1
 
+            # Record an end-of-day balance snapshot for the chart history.
+            # Idempotent — re-syncs on the same day overwrite the value rather than duplicating.
+            from .models import AccountBalanceSnapshot
+            AccountBalanceSnapshot.objects.update_or_create(
+                account=acc,
+                date=timezone.localdate(),
+                defaults={"balance": acc.balance},
+            )
+
             for tx in payload.transactions:
                 mapped_category = map_teller_category(tx.provider_category)
                 # If provider's category is generic ("uncategorized" or "other"), try heuristic transfer detection.

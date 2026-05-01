@@ -701,6 +701,24 @@ def test_set_category_rejects_other_users_custom_category():
 
 
 @pytest.mark.django_db
+def test_sync_writes_balance_snapshot_for_account():
+    """After link_institution / sync_institution, an AccountBalanceSnapshot
+    exists for the account at today's date with the synced balance."""
+    from apps.banking.models import AccountBalanceSnapshot
+    user = User.objects.create_user(username="alice_synsnap", password="x")
+    inst = link_institution(
+        user=user, setup_token="t", display_name="Bank", provider_name="fake",
+    )
+    acc = Account.objects.get(institution=inst)
+    snaps = AccountBalanceSnapshot.objects.filter(account=acc)
+    assert snaps.count() == 1
+    s = snaps.first()
+    from django.utils import timezone
+    assert s.date == timezone.localdate()
+    assert s.balance == acc.balance
+
+
+@pytest.mark.django_db
 def test_sync_auto_detects_transfer_when_teller_marks_as_other():
     """When Teller's category maps to 'other' AND the payee matches a transfer pattern,
     the sync hook overrides 'other' to 'transfer'."""
