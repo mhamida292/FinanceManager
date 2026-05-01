@@ -10,7 +10,7 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
-def networth_chart_svg(values: Iterable[Decimal], days: int = 30, width: int = 600, height: int = 200, end_date: date | None = None) -> str:
+def networth_chart_svg(values: Iterable[Decimal], days: int = 30, width: int = 600, height: int = 320, end_date: date | None = None) -> str:
     """Render a polished line chart for net-worth history.
     `values` is a list of Decimals, most-recent last.
     `days` is the length of the window (default 30).
