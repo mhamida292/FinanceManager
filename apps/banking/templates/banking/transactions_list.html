@@ -238,10 +238,27 @@
       item.addEventListener("click", () => assignCategory(cat));
       grid.appendChild(item);
     });
-    const rect = trigger.getBoundingClientRect();
-    popup.style.left = rect.left + "px";
-    popup.style.top = (rect.bottom + 4) + "px";
+    // Show off-screen first so we can measure its rendered size, then position.
+    popup.style.left = "-9999px";
+    popup.style.top = "-9999px";
     popup.classList.remove("hidden");
+    const rect = trigger.getBoundingClientRect();
+    const popupRect = popup.getBoundingClientRect();
+    const margin = 8;
+    let left = rect.left;
+    let top = rect.bottom + 4;
+    // Clamp right edge — shift left if the popup would overflow viewport.
+    if (left + popupRect.width > window.innerWidth - margin) {
+      left = window.innerWidth - popupRect.width - margin;
+    }
+    if (left < margin) left = margin;
+    // If the popup would fall below the viewport, flip it to ABOVE the trigger.
+    if (top + popupRect.height > window.innerHeight - margin) {
+      top = rect.top - popupRect.height - 4;
+    }
+    if (top < margin) top = margin;
+    popup.style.left = left + "px";
+    popup.style.top = top + "px";
   }
 
   function closePopup() {
