@@ -67,40 +67,43 @@ def net_worth_history(user, days: int = 30) -> list[Decimal]:
 
     net_worth(day) = cash(day) + investments(day) + assets(day) - liabilities(day)
 
-    Where:
-    - cash(day) sums display_balance over checking/savings/other accounts on `day`
-    - liabilities(day) sums abs(display_balance) over credit/loan accounts on `day`
-      (so that subtracting liabilities pulls them out of net worth)
-    - investments(day) and assets(day) come from PortfolioSnapshot / AssetPriceSnapshot
+    Each account, investment account, and asset is tracked independently. Each
+    one's value on each day is determined by:
+      1. The most recent snapshot ON or BEFORE that day, if one exists.
+      2. Otherwise (no pre-cutoff snapshot AND no in-window snapshot yet on
+         this day), the FIRST in-window snapshot value — applied retroactively.
+         This avoids fake jumps when a user newly-connects an account: the
+         chart treats the account as if it always had its first-known value.
 
-    Days with no snapshot for a given account carry the previous value forward;
-    leading days with no data contribute zero.
+    Days with no snapshot for any source contribute 0.
     """
     cutoff = date.today() - timedelta(days=days - 1)
 
-    # Per-account snapshot timeline for cash/liability accounts.
-    # We need the most recent snapshot ON OR BEFORE `cutoff` to seed the
-    # carry-forward correctly, otherwise leading days under-count balances.
     from apps.banking.models import Account, AccountBalanceSnapshot
 
+    # ---------- Cash / liability accounts (existing logic, unchanged) ----------
     accounts = list(
         Account.objects.filter(institution__user=user).only("id", "type")
     )
     account_types = {a.id: a.type for a in accounts}
 
-    # Latest snapshot before cutoff per account (the seed).
     seed: dict[int, Decimal] = {}
     for a in accounts:
         last_before = (
             AccountBalanceSnapshot.objects
             .filter(account=a, date__lt=cutoff)
-            .order_by("-date")
-            .only("balance")
-            .first()
+            .order_by("-date").only("balance").first()
         )
-        seed[a.id] = last_before.balance if last_before else Decimal("0")
+        if last_before:
+            seed[a.id] = last_before.balance
+        else:
+            first_in = (
+                AccountBalanceSnapshot.objects
+                .filter(account=a, date__gte=cutoff)
+                .order_by("date").only("balance").first()
+            )
+            seed[a.id] = first_in.balance if first_in else Decimal("0")
 
-    # Snapshots within the window, grouped by date and account.
     snapshots_in_window: dict[tuple[int, date], Decimal] = {}
     for snap in (
         AccountBalanceSnapshot.objects
@@ -110,29 +113,84 @@ def net_worth_history(user, days: int = 30) -> list[Decimal]:
     ):
         snapshots_in_window[(snap.account_id, snap.date)] = snap.balance
 
-    inv_by_day = {}
-    for snap in PortfolioSnapshot.objects.for_user(user).filter(date__gte=cutoff).order_by("date"):
-        inv_by_day[snap.date] = inv_by_day.get(snap.date, Decimal("0")) + snap.total_value
+    # ---------- Investments (per-account treatment) ----------
+    inv_accounts = list(
+        InvestmentAccount.objects.filter(user=user).only("id")
+    )
+    inv_seed: dict[int, Decimal] = {}
+    for ia in inv_accounts:
+        last_before = (
+            PortfolioSnapshot.objects
+            .filter(investment_account=ia, date__lt=cutoff)
+            .order_by("-date").only("total_value").first()
+        )
+        if last_before:
+            inv_seed[ia.id] = last_before.total_value
+        else:
+            first_in = (
+                PortfolioSnapshot.objects
+                .filter(investment_account=ia, date__gte=cutoff)
+                .order_by("date").only("total_value").first()
+            )
+            inv_seed[ia.id] = first_in.total_value if first_in else Decimal("0")
 
-    asset_by_day = {}
-    for snap in AssetPriceSnapshot.objects.for_user(user).filter(at__date__gte=cutoff).order_by("at"):
-        asset_by_day[snap.at.date()] = snap.value
+    inv_snapshots_in_window: dict[tuple[int, date], Decimal] = {}
+    for snap in (
+        PortfolioSnapshot.objects.for_user(user)
+        .filter(date__gte=cutoff)
+        .only("investment_account_id", "date", "total_value")
+        .order_by("date")
+    ):
+        inv_snapshots_in_window[(snap.investment_account_id, snap.date)] = snap.total_value
 
+    # ---------- Assets (per-asset treatment) ----------
+    user_assets = list(Asset.objects.filter(user=user).only("id"))
+    asset_seed: dict[int, Decimal] = {}
+    for asset in user_assets:
+        last_before = (
+            AssetPriceSnapshot.objects
+            .filter(asset=asset, at__date__lt=cutoff)
+            .order_by("-at").only("value").first()
+        )
+        if last_before:
+            asset_seed[asset.id] = last_before.value
+        else:
+            first_in = (
+                AssetPriceSnapshot.objects
+                .filter(asset=asset, at__date__gte=cutoff)
+                .order_by("at").only("value").first()
+            )
+            asset_seed[asset.id] = first_in.value if first_in else Decimal("0")
+
+    asset_snapshots_in_window: dict[tuple[int, date], Decimal] = {}
+    for snap in (
+        AssetPriceSnapshot.objects.for_user(user)
+        .filter(at__date__gte=cutoff)
+        .only("asset_id", "at", "value")
+        .order_by("at")
+    ):
+        # Multiple snapshots per day per asset are possible; latest wins.
+        asset_snapshots_in_window[(snap.asset_id, snap.at.date())] = snap.value
+
+    # ---------- Walk the days ----------
     result: list[Decimal] = []
-    last_inv = Decimal("0")
-    last_asset = Decimal("0")
     current_account_balance = dict(seed)
+    current_inv_per_acct = dict(inv_seed)
+    current_asset_per_id = dict(asset_seed)
 
     for i in range(days):
         d = cutoff + timedelta(days=i)
-        # Update per-account balances with any snapshot from this day.
+
+        # Update per-source values from any in-window snapshot on this day.
         for a_id in current_account_balance:
             if (a_id, d) in snapshots_in_window:
                 current_account_balance[a_id] = snapshots_in_window[(a_id, d)]
-        if d in inv_by_day:
-            last_inv = inv_by_day[d]
-        if d in asset_by_day:
-            last_asset = asset_by_day[d]
+        for ia_id in current_inv_per_acct:
+            if (ia_id, d) in inv_snapshots_in_window:
+                current_inv_per_acct[ia_id] = inv_snapshots_in_window[(ia_id, d)]
+        for asset_id in current_asset_per_id:
+            if (asset_id, d) in asset_snapshots_in_window:
+                current_asset_per_id[asset_id] = asset_snapshots_in_window[(asset_id, d)]
 
         # Sum cash and liabilities from per-account balances.
         cash_total = Decimal("0")
@@ -144,7 +202,10 @@ def net_worth_history(user, days: int = 30) -> list[Decimal]:
             else:
                 cash_total += raw_balance
 
-        net_worth = cash_total + last_inv + last_asset - liability_total
+        inv_total = sum(current_inv_per_acct.values(), Decimal("0"))
+        asset_total = sum(current_asset_per_id.values(), Decimal("0"))
+
+        net_worth = cash_total + inv_total + asset_total - liability_total
         result.append(net_worth)
 
     return result
