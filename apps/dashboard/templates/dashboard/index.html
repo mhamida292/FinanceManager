@@ -1,20 +1,23 @@
 {% extends "base.html" %}
 {% load sparkline %}
+{% load networth_chart %}
 {% load money %}
 {% load category_tags %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 
-<div class="flex items-end justify-between mb-6 flex-wrap gap-4">
-  <div>
-    <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Net worth</div>
-    <div class="text-3xl sm:text-4xl font-bold num mt-1 break-words" style="color: {% if summary.net_worth < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
-      {{ summary.net_worth|money }}
+<div class="mb-6">
+  <div class="flex items-end justify-between mb-4 flex-wrap gap-4">
+    <div>
+      <div class="text-[10px] uppercase tracking-widest" style="color: var(--dim);">Net worth</div>
+      <div class="text-3xl sm:text-4xl font-bold num mt-1 break-words" style="color: {% if summary.net_worth < 0 %}var(--accent-negative){% else %}var(--accent-positive){% endif %};">
+        {{ summary.net_worth|money }}
+      </div>
     </div>
+    <div class="text-xs" style="color: var(--muted);">Last 30 days</div>
   </div>
-  <div class="flex items-center gap-3">
-    {% sparkline history %}
-    <div class="text-xs" style="color: var(--muted);">30 days</div>
+  <div class="rounded border p-4" style="background: var(--surface); border-color: var(--border);">
+    {% networth_chart history %}
   </div>
 </div>
 
