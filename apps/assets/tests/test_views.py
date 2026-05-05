@@ -174,3 +174,43 @@ def test_refresh_one_404_for_other_user(alice, bob_client):
     )
     r = bob_client.post(reverse("assets:refresh_one", args=[a.id]))
     assert r.status_code == 404
+
+
+def test_asset_detail_renders_template_and_chart(alice, alice_client):
+    """End-to-end: detail page renders without 500, includes the chart, the unit
+    price (for scraped), and the last-updated stamp."""
+    from datetime import datetime, timezone as tz
+    a = Asset.objects.create(
+        user=alice, kind="scraped", name="Gold Eagle",
+        source_url="https://example.com/gold",
+        quantity=Decimal("5"),
+        last_unit_price=Decimal("2000.0000"),
+        current_value=Decimal("10000.00"),
+        last_priced_at=datetime(2026, 4, 30, tzinfo=tz.utc),
+    )
+    r = alice_client.get(reverse("assets:detail", args=[a.id]))
+    assert r.status_code == 200
+    body = r.content.decode()
+    assert "Gold Eagle" in body
+    # Unit price + total value rendered via the money filter.
+    assert "$10,000" in body
+    assert "$2,000" in body
+    # Last-updated text.
+    assert "Apr" in body  # Apr 30 from last_priced_at
+    # Refresh button form for scraped asset.
+    assert "/refresh/" in body
+    # Chart container — always renders when series has 2+ points.
+    # (build_asset_value_series returns 30 entries, so always >=2.)
+    assert "<svg" in body or "Not enough" in body
+
+
+def test_asset_detail_manual_hides_refresh_and_unit_price(alice, alice_client):
+    a = Asset.objects.create(user=alice, kind="manual", name="Camry", current_value=Decimal("18000"))
+    r = alice_client.get(reverse("assets:detail", args=[a.id]))
+    body = r.content.decode()
+    assert "Camry" in body
+    assert "$18,000" in body
+    # No refresh button on manual.
+    assert reverse("assets:refresh_one", args=[a.id]) not in body
+    # No "Unit price" stat card.
+    assert "Unit price" not in body

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load money %}
+{% load networth_chart %}
+{% block title %}{{ asset.name }}{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto">
+  <a href="{% url 'assets:list' %}" class="text-sm" style="color: var(--muted);">← Assets</a>
+
+  <div class="flex items-baseline gap-3 mt-2 mb-6 flex-wrap">
+    <h1 class="text-2xl font-bold">{{ asset.name }}</h1>
+    <span class="text-xs px-2 py-0.5 rounded" style="border: 1px solid var(--border); color: var(--muted);">
+      {% if asset.kind == 'scraped' %}📈 Scraped{% else %}✎ Manual{% endif %}
+    </span>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+    <div class="border p-3 rounded text-sm mb-4"
+         style="{% if message.tags == 'error' %}background: var(--tint-lia); border-color: var(--accent-lia); color: var(--accent-lia);{% elif message.tags == 'warning' %}background: var(--tint-assets); border-color: var(--accent-assets); color: var(--accent-assets);{% else %}background: var(--tint-positive); border-color: var(--accent-positive); color: var(--accent-positive);{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  {# Stat cards row #}
+  <div class="grid {% if asset.kind == 'scraped' %}grid-cols-1 sm:grid-cols-3{% else %}grid-cols-1 sm:grid-cols-2{% endif %} gap-3 mb-6">
+    <div class="rounded p-4 border" style="background: var(--surface); border-color: var(--border);">
+      <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Current value</div>
+      <div class="text-2xl font-bold num mt-1" style="color: var(--accent-assets);">{{ asset.current_value|money }}</div>
+    </div>
+
+    {% if asset.kind == 'scraped' %}
+    <div class="rounded p-4 border" style="background: var(--surface); border-color: var(--border);">
+      <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Unit price</div>
+      <div class="text-2xl font-bold num mt-1">
+        {% if asset.last_unit_price %}{{ asset.last_unit_price|money }}{% else %}—{% endif %}
+      </div>
+      <div class="text-xs mt-1 num" style="color: var(--muted);">× {{ asset.quantity }} {{ asset.unit }}</div>
+    </div>
+    {% endif %}
+
+    <div class="rounded p-4 border" style="background: var(--surface); border-color: var(--border);">
+      <div class="text-[10px] uppercase tracking-widest" style="color: var(--muted);">Last updated</div>
+      {% if asset.last_priced_at %}
+      <div class="text-base font-semibold mt-1" title="{{ asset.last_priced_at|date:'c' }}">{{ asset.last_priced_at|date:"M j, Y" }}</div>
+      <div class="text-xs mt-1" style="color: var(--muted);">{{ asset.last_priced_at|timesince }} ago</div>
+      {% else %}
+      <div class="text-base font-semibold mt-1" style="color: var(--muted);">Never</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Refresh action (scraped only) #}
+  {% if asset.kind == 'scraped' %}
+  <form method="post" action="{% url 'assets:refresh_one' asset.id %}" class="mb-6">
+    {% csrf_token %}
+    <button type="submit" class="text-sm border px-3 py-2 rounded" style="border-color: var(--border); color: var(--muted);">⟳ Refresh now</button>
+  </form>
+  {% endif %}
+
+  {# Chart #}
+  <div class="rounded p-4 border mb-6" style="background: var(--surface); border-color: var(--border);">
+    <div class="text-[10px] uppercase tracking-widest mb-2" style="color: var(--muted);">Value history (30 days)</div>
+    {% value_chart series value_label="Asset value" %}
+  </div>
+
+  {# Notes #}
+  {% if asset.notes %}
+  <div class="rounded p-4 border mb-6" style="background: var(--surface); border-color: var(--border);">
+    <div class="text-[10px] uppercase tracking-widest mb-2" style="color: var(--muted);">Notes</div>
+    <div class="text-sm">{{ asset.notes }}</div>
+  </div>
+  {% endif %}
+
+  {# Edit / Delete actions #}
+  <div class="flex items-center gap-3">
+    <a href="{% url 'assets:edit' asset.id %}" class="font-bold px-4 py-2 rounded" style="background: var(--accent-positive); color: var(--bg);">Edit</a>
+    <a href="{% url 'assets:delete' asset.id %}" class="text-sm" style="color: var(--accent-negative);">Delete</a>
+  </div>
+</div>
+{% endblock %}
