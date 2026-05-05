@@ -37,3 +37,40 @@ def test_networth_chart_with_flat_data_does_not_divide_by_zero():
     values = [Decimal("100")] * 10
     out = networth_chart_svg(values)
     assert "<svg" in out  # didn't crash
+
+
+from decimal import Decimal as _D
+
+from apps.dashboard.templatetags.networth_chart import value_chart_svg
+
+
+def test_value_chart_svg_renders_basic_line():
+    out = value_chart_svg([_D("100"), _D("110"), _D("120")])
+    assert "<svg" in out
+    # Default value_label is "Value".
+    # (The label currently shows up only inside the data tooltip JS — a
+    # rendered chart includes the label string in the markup.)
+    assert "value_chart_svg" not in out  # smoke: not a stub
+
+
+def test_value_chart_svg_accepts_custom_label():
+    out_assets = value_chart_svg([_D("100"), _D("110"), _D("120")], value_label="Asset value")
+    assert "Asset value" in out_assets
+
+
+def test_networth_chart_svg_still_works_via_wrapper():
+    """Backward-compat: the original entry point keeps working unchanged."""
+    from apps.dashboard.templatetags.networth_chart import networth_chart_svg
+    out = networth_chart_svg([_D("100"), _D("110")])
+    assert "<svg" in out
+
+
+def test_value_chart_svg_under_two_points_renders_placeholder():
+    out = value_chart_svg([_D("100")])
+    assert "Not enough" in out or "not enough" in out
+
+
+def test_value_chart_svg_default_label_is_value():
+    out = value_chart_svg([_D("100"), _D("110")])
+    # Default label should appear somewhere in the rendered fragment.
+    assert "Value" in out

@@ -10,7 +10,7 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
-def networth_chart_svg(values: Iterable[Decimal], days: int = 30, width: int = 600, height: int = 320, end_date: date | None = None) -> str:
+def value_chart_svg(values: Iterable[Decimal], days: int = 30, width: int = 600, height: int = 320, end_date: date | None = None, value_label: str = "Value") -> str:
     """Render a polished line chart for net-worth history.
     `values` is a list of Decimals, most-recent last.
     `days` is the length of the window (default 30).
@@ -154,13 +154,17 @@ def networth_chart_svg(values: Iterable[Decimal], days: int = 30, width: int = 6
 
     parts.append('</svg>')
 
-    # Tooltip element (HTML, positioned absolutely).
+    # Tooltip element (HTML, positioned absolutely). Includes a label header
+    # so callers can distinguish "Net worth" vs "Asset value" etc.
+    from html import escape as _html_escape
+    label_html = _html_escape(value_label)
     parts.append(
         f'<div class="nw-tooltip" style="position: absolute; display: none; '
         f'background: var(--surface, #161616); border: 1px solid var(--border, #333); '
         f'border-radius: 4px; padding: 6px 10px; font-size: 11px; '
         f'pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); white-space: nowrap;">'
         f'<div class="nw-tt-date" style="color: var(--muted, #888); font-size: 10px; margin-bottom: 2px;"></div>'
+        f'<div class="nw-tt-label" style="color: var(--muted, #888); font-size: 10px; margin-bottom: 2px;">{label_html}</div>'
         f'<div class="nw-tt-value" style="color: var(--accent-positive, #88a877); font-weight: 600;"></div>'
         f'</div>'
     )
@@ -232,6 +236,17 @@ def networth_chart_svg(values: Iterable[Decimal], days: int = 30, width: int = 6
     return mark_safe("".join(parts))
 
 
+def networth_chart_svg(values: Iterable[Decimal], days: int = 30, width: int = 600, height: int = 320, end_date: date | None = None) -> str:
+    """Backward-compatible wrapper that calls value_chart_svg with the
+    'Net worth' label. Existing dashboard callers keep working unchanged."""
+    return value_chart_svg(values, days=days, width=width, height=height, end_date=end_date, value_label="Net worth")
+
+
 @register.simple_tag
 def networth_chart(values, days=30):
     return networth_chart_svg(values, days=int(days))
+
+
+@register.simple_tag
+def value_chart(values, days=30, value_label="Value"):
+    return value_chart_svg(values, days=int(days), value_label=value_label)
