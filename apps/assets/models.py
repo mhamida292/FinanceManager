@@ -30,6 +30,11 @@ class Asset(models.Model):
 
     # Current total value. For scraped: last_scraped_unit_price × quantity. For manual: user-entered directly.
     current_value = models.DecimalField(max_digits=18, decimal_places=2, default=Decimal("0"))
+    last_unit_price = models.DecimalField(
+        max_digits=18, decimal_places=4, null=True, blank=True,
+        help_text="Per-unit scraped price from the most recent successful refresh. "
+                  "Null for manual assets and for scraped assets never refreshed.",
+    )
     last_priced_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
