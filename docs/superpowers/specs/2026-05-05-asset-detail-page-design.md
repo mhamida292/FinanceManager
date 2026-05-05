@@ -117,7 +117,7 @@ Implementation walks the same algorithm as `apps/dashboard/services.py:146-193` 
 
 **Default window:** 30 days. (Future: a range selector — out of scope.)
 
-If the asset has zero snapshots ever (shouldn't happen — `create_asset` always snapshots — but defensive), return an empty list and let the chart helper render its "not enough data" fallback.
+If the asset has zero snapshots ever (shouldn't happen — `create_asset` always snapshots — but defensive), return a list of `days` zeros (mirrors the dashboard pipeline, which seeds zero when no snapshots exist). The chart helper's `<2-points` fallback won't fire in this case (30 zeros is technically renderable as a flat line), but the stat cards above the chart will already show `current_value` of zero, so the flat-zero chart line below is a reasonable degraded experience and the user can still see the chart container is there. If a more explicit "no data yet" placeholder becomes desirable, that's a follow-up to either this helper (return empty when all values are zero AND no snapshots exist) or the chart helper (render placeholder when all values are equal).
 
 ## Chart helper refactor
 
