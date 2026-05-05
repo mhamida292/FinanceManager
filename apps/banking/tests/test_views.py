@@ -819,3 +819,69 @@ def test_resolve_page_size_case_insensitive_for_all():
 def test_allowed_page_sizes_constants():
     assert set(ALLOWED_PAGE_SIZES.keys()) == {"25", "50", "100", "200", "all"}
     assert ALLOWED_PAGE_SIZES["all"] == 1000
+
+
+from datetime import date as _date
+from decimal import Decimal as _D
+
+
+@pytest.fixture
+def alice_with_60_transactions(alice):
+    """Give Alice 60 transactions on a single account so we can exercise pagination."""
+    inst = Institution.objects.create(user=alice, name="A Bank", access_url="https://a.example")
+    acct = Account.objects.create(
+        institution=inst, name="Checking", type="checking",
+        balance=_D("1000.00"), external_id="A-1",
+    )
+    for i in range(60):
+        Transaction.objects.create(
+            account=acct,
+            external_id=f"T-{i}",
+            posted_at=_date(2026, 4, 1),
+            amount=_D("-10.00"),
+            description=f"tx-{i}",
+        )
+    return alice
+
+
+def test_transactions_default_page_size_is_50(alice_with_60_transactions, alice_client):
+    r = alice_client.get(reverse("transactions"))
+    assert r.status_code == 200
+    assert r.context["page_obj"].paginator.per_page == 50
+    assert r.context["selected_size"] == "50"
+
+
+def test_transactions_size_100_loads_all_60(alice_with_60_transactions, alice_client):
+    r = alice_client.get(reverse("transactions") + "?size=100")
+    assert r.status_code == 200
+    assert r.context["page_obj"].paginator.per_page == 100
+    assert r.context["selected_size"] == "100"
+    # All 60 fit on one page now.
+    assert len(r.context["page_obj"].object_list) == 60
+
+
+def test_transactions_size_all_caps_at_1000(alice_with_60_transactions, alice_client):
+    r = alice_client.get(reverse("transactions") + "?size=all")
+    assert r.context["page_obj"].paginator.per_page == 1000
+    assert r.context["selected_size"] == "all"
+
+
+def test_transactions_size_invalid_falls_back_to_50(alice_with_60_transactions, alice_client):
+    r = alice_client.get(reverse("transactions") + "?size=garbage")
+    assert r.context["page_obj"].paginator.per_page == 50
+    assert r.context["selected_size"] == "50"
+
+
+def test_transactions_size_propagates_through_filter_qs(alice_with_60_transactions, alice_client):
+    """filter_qs must include `size` so pagination/category links carry it through."""
+    r = alice_client.get(reverse("transactions") + "?size=100&q=tx")
+    filter_qs = r.context["filter_qs"]
+    assert "size=100" in filter_qs
+    assert "q=tx" in filter_qs
+
+
+def test_transactions_default_size_omitted_from_filter_qs(alice_with_60_transactions, alice_client):
+    """When size is at default, don't pollute filter_qs with `size=50`."""
+    r = alice_client.get(reverse("transactions") + "?q=tx")
+    filter_qs = r.context["filter_qs"]
+    assert "size=" not in filter_qs

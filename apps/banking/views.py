@@ -328,7 +328,8 @@ def transactions_list(request):
         if c not in top_categories
     ]
 
-    paginator = Paginator(qs, 50)
+    size_key, per_page = _resolve_page_size(request)
+    paginator = Paginator(qs, per_page)
     page_obj = paginator.get_page(request.GET.get("page"))
 
     accounts = Account.objects.for_user(request.user).order_by("institution__name", "name")
@@ -343,6 +344,8 @@ def transactions_list(request):
         qs_params["q"] = search
     if selected_category:
         qs_params["category"] = selected_category
+    if size_key != DEFAULT_PAGE_SIZE_KEY:
+        qs_params["size"] = size_key
     filter_qs = urlencode(qs_params)
 
     # Same params but without `category`. Used by the category-pill links so
@@ -372,6 +375,7 @@ def transactions_list(request):
         "selected_account": selected_account,
         "selected_range": preset,
         "search": search,
+        "selected_size": size_key,
         "filter_qs": filter_qs,
         "filter_qs_no_category": filter_qs_no_category,
         "page_window": _page_window(page_obj.number, paginator.num_pages),
