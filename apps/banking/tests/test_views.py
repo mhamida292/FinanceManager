@@ -885,3 +885,22 @@ def test_transactions_default_size_omitted_from_filter_qs(alice_with_60_transact
     r = alice_client.get(reverse("transactions") + "?q=tx")
     filter_qs = r.context["filter_qs"]
     assert "size=" not in filter_qs
+
+
+def test_transactions_page_renders_size_selector(alice_with_60_transactions, alice_client):
+    r = alice_client.get(reverse("transactions"))
+    assert b'name="size"' in r.content
+    # All five options should render.
+    for opt in (b'value="25"', b'value="50"', b'value="100"', b'value="200"', b'value="all"'):
+        assert opt in r.content
+
+
+def test_transactions_size_100_marks_correct_option(alice_with_60_transactions, alice_client):
+    r = alice_client.get(reverse("transactions") + "?size=100")
+    body = r.content.decode()
+    # The 100 option should be marked selected; the 50 option should not be.
+    import re
+    m_100 = re.search(r'value="100"\s*selected', body)
+    m_50 = re.search(r'value="50"\s*selected', body)
+    assert m_100, "size=100 not marked selected"
+    assert not m_50, "size=50 incorrectly marked selected when ?size=100"

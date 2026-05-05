@@ -182,22 +182,41 @@
     {% endfor %}
   </div>
 
-  {# Pagination — numbered links with ellipsis windowing for long ranges #}
-  {% if page_obj.has_other_pages %}
-  <div class="mt-4 flex flex-wrap items-center justify-center gap-1 text-sm">
-    {% for p in page_window %}
-      {% if p %}
-        {% if p == page_obj.number %}
-          <span class="num font-bold px-2.5 py-1 rounded" style="background: var(--tint-positive); color: var(--accent-positive);">{{ p }}</span>
+  {# Pagination + page-size selector — pagination only renders when there are multiple pages, but the size selector is always available so users with <50 rows can still pick "All" or step down. #}
+  <div class="mt-4 flex flex-wrap items-center justify-center gap-3 text-sm">
+    {% if page_obj.has_other_pages %}
+    <div class="flex flex-wrap items-center justify-center gap-1">
+      {% for p in page_window %}
+        {% if p %}
+          {% if p == page_obj.number %}
+            <span class="num font-bold px-2.5 py-1 rounded" style="background: var(--tint-positive); color: var(--accent-positive);">{{ p }}</span>
+          {% else %}
+            <a class="num px-2.5 py-1 rounded hover:underline" href="?{% if filter_qs %}{{ filter_qs }}&{% endif %}page={{ p }}" style="color: var(--muted);">{{ p }}</a>
+          {% endif %}
         {% else %}
-          <a class="num px-2.5 py-1 rounded hover:underline" href="?{% if filter_qs %}{{ filter_qs }}&{% endif %}page={{ p }}" style="color: var(--muted);">{{ p }}</a>
+          <span class="px-1" style="color: var(--dim);">…</span>
         {% endif %}
-      {% else %}
-        <span class="px-1" style="color: var(--dim);">…</span>
-      {% endif %}
-    {% endfor %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="get" class="flex items-center gap-2 text-xs">
+      {% if selected_account %}<input type="hidden" name="account" value="{{ selected_account }}">{% endif %}
+      {% if selected_range %}<input type="hidden" name="range" value="{{ selected_range }}">{% endif %}
+      {% if search %}<input type="hidden" name="q" value="{{ search }}">{% endif %}
+      {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
+      <label for="size" style="color: var(--muted);">Show</label>
+      <select name="size" id="size" onchange="this.form.submit()"
+              class="num rounded px-2 py-1"
+              style="background: var(--surface); border: 1px solid var(--border); color: var(--text);">
+        <option value="25"  {% if selected_size == '25'  %}selected{% endif %}>25</option>
+        <option value="50"  {% if selected_size == '50'  %}selected{% endif %}>50</option>
+        <option value="100" {% if selected_size == '100' %}selected{% endif %}>100</option>
+        <option value="200" {% if selected_size == '200' %}selected{% endif %}>200</option>
+        <option value="all" {% if selected_size == 'all' %}selected{% endif %}>All</option>
+      </select>
+    </form>
   </div>
-  {% endif %}
 {% endif %}
 
 <div id="cat-popup" class="hidden fixed bg-[var(--surface)] border rounded p-2 shadow-lg z-50" style="border-color: var(--border);">
