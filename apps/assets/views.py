@@ -8,7 +8,9 @@ from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
 from .models import Asset
-from .services import create_asset, delete_asset, refresh_scraped_assets, update_asset
+from .services import (
+    build_asset_value_series, create_asset, delete_asset, refresh_scraped_assets, update_asset,
+)
 
 
 def _decimal_or_default(raw: str, default: Decimal) -> Decimal:
@@ -28,6 +30,16 @@ def assets_list(request):
     return render(request, "assets/assets_list.html", {
         "assets": assets,
         "total": total,
+    })
+
+
+@login_required
+def asset_detail(request, asset_id):
+    asset = get_object_or_404(Asset.objects.for_user(request.user), pk=asset_id)
+    series = build_asset_value_series(asset)
+    return render(request, "assets/asset_detail.html", {
+        "asset": asset,
+        "series": series,
     })
 
 

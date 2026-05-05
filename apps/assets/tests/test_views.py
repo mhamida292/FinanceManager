@@ -117,3 +117,26 @@ def test_anonymous_redirects():
     r = c.get(reverse("assets:list"))
     assert r.status_code == 302
     assert "/login/" in r["Location"]
+
+
+def test_asset_detail_renders_for_owner(alice, alice_client):
+    a = Asset.objects.create(user=alice, kind="manual", name="Painting", current_value=Decimal("5000"))
+    r = alice_client.get(reverse("assets:detail", args=[a.id]))
+    assert r.status_code == 200
+    assert b"Painting" in r.content
+    assert r.context["asset"].id == a.id
+    assert "series" in r.context
+
+
+def test_asset_detail_404_for_other_user(alice, bob_client):
+    a = Asset.objects.create(user=alice, kind="manual", name="Painting", current_value=Decimal("5000"))
+    r = bob_client.get(reverse("assets:detail", args=[a.id]))
+    assert r.status_code == 404
+
+
+def test_asset_detail_anonymous_redirects():
+    c = Client()
+    # Use a synthetic id; auth check fires before lookup.
+    r = c.get(reverse("assets:detail", args=[1]))
+    assert r.status_code == 302
+    assert "/login/" in r["Location"]
