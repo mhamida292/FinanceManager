@@ -141,3 +141,56 @@ def test_refresh_persists_unit_price(fake_scraper):
     a.refresh_from_db()
     assert a.last_unit_price == Decimal("2734.5000")
     assert a.current_value == Decimal("8203.50")  # quantity x unit price
+
+
+@pytest.mark.django_db
+def test_refresh_one_asset_updates_just_that_asset(fake_scraper):
+    user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")
+    a = create_asset(
+        user=user, kind="scraped", name="Gold",
+        source_url="https://example.com/gold", quantity=Decimal("2"),
+    )
+    b = create_asset(
+        user=user, kind="scraped", name="Silver",
+        source_url="https://example.com/silver", quantity=Decimal("5"),
+    )
+    fake_scraper.prices_by_url = {
+        "https://example.com/gold": Decimal("2000"),
+        "https://example.com/silver": Decimal("30"),
+    }
+    # Import here so the failing import surfaces in this test.
+    from apps.assets.services import refresh_one_asset
+
+    ok, err = refresh_one_asset(a)
+    assert ok is True
+    assert err == ""
+    a.refresh_from_db()
+    b.refresh_from_db()
+    assert a.current_value == Decimal("4000.00")
+    assert b.current_value == Decimal("0.00")  # untouched (was zero from create_asset)
+
+
+@pytest.mark.django_db
+def test_refresh_one_asset_rejects_manual():
+    user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")
+    a = create_asset(user=user, kind="manual", name="Car", current_value=Decimal("18000"))
+    from apps.assets.services import refresh_one_asset
+    ok, err = refresh_one_asset(a)
+    assert ok is False
+    assert "manual" in err.lower()
+    a.refresh_from_db()
+    assert a.current_value == Decimal("18000")  # unchanged
+
+
+@pytest.mark.django_db
+def test_refresh_one_asset_records_failure(fake_scraper):
+    user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")
+    a = create_asset(
+        user=user, kind="scraped", name="Bad",
+        source_url="https://bad.example/", quantity=Decimal("1"),
+    )
+    fake_scraper.errors_by_url = {"https://bad.example/": "boom"}
+    from apps.assets.services import refresh_one_asset
+    ok, err = refresh_one_asset(a)
+    assert ok is False
+    assert "boom" in err

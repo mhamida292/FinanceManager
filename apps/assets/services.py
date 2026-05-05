@@ -64,6 +64,30 @@ def refresh_scraped_assets(*, user) -> RefreshResult:
     return RefreshResult(updated=updated, failed=failed)
 
 
+def refresh_one_asset(asset: Asset) -> tuple[bool, str]:
+    """Re-scrape a single asset's URL and update current_value, last_unit_price, last_priced_at.
+
+    Returns (True, "") on success, (False, error_message) otherwise. Manual assets are
+    rejected at this layer; the calling view should hide the refresh button for them
+    but defense-in-depth here protects against URL tampering or future callers.
+    """
+    if asset.kind != "scraped":
+        return False, "manual assets have no source URL to refresh"
+    if not asset.source_url:
+        return False, "no source_url"
+    scraper = get_scraper("css")
+    try:
+        result = scraper.fetch(asset.source_url, selector=asset.css_selector or "")
+    except Exception as exc:
+        return False, str(exc)
+    asset.last_unit_price = result.price.quantize(Decimal("0.0001"))
+    asset.current_value = (result.price * asset.quantity).quantize(Decimal("0.01"))
+    asset.last_priced_at = result.at
+    asset.save(update_fields=["last_unit_price", "current_value", "last_priced_at"])
+    _snapshot(asset)
+    return True, ""
+
+
 def delete_asset(asset: Asset) -> None:
     asset.delete()
 
