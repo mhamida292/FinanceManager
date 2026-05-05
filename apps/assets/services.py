@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import date as _date, timedelta as _td
 from decimal import Decimal
 
 from django.db import transaction
@@ -90,6 +91,59 @@ def refresh_one_asset(asset: Asset) -> tuple[bool, str]:
 
 def delete_asset(asset: Asset) -> None:
     asset.delete()
+
+
+def build_asset_value_series(asset: Asset, days: int = 30) -> list[Decimal]:
+    """Forward-filled daily series of this asset's value over `days` days, ending today.
+
+    Mirrors the algorithm in apps/dashboard/services.py for a single asset:
+      - seed with the latest AssetPriceSnapshot strictly before the window
+      - walk each day, applying any in-window snapshot (latest wins per day)
+      - forward-fill otherwise
+
+    Returns a list of Decimals, oldest-first / recent-last, length == `days`.
+    Empty/missing history yields a list of zeros (the chart helper's <2-points
+    fallback covers the "no useful chart" UX).
+    """
+    today = _date.today()
+    cutoff = today - _td(days=days - 1)  # series[0] corresponds to `cutoff`
+
+    # Seed: latest snapshot before the window, or the earliest snapshot in-window if none-before.
+    seed_decimal = Decimal("0")
+    last_before = (
+        AssetPriceSnapshot.objects
+        .filter(asset=asset, at__date__lt=cutoff)
+        .order_by("-at").only("value").first()
+    )
+    if last_before:
+        seed_decimal = last_before.value
+    else:
+        first_in = (
+            AssetPriceSnapshot.objects
+            .filter(asset=asset, at__date__gte=cutoff)
+            .order_by("at").only("value").first()
+        )
+        if first_in:
+            seed_decimal = first_in.value
+
+    # Snapshots inside the window, latest wins per day.
+    in_window: dict[_date, Decimal] = {}
+    for snap in (
+        AssetPriceSnapshot.objects
+        .filter(asset=asset, at__date__gte=cutoff)
+        .only("at", "value")
+        .order_by("at")
+    ):
+        in_window[snap.at.date()] = snap.value
+
+    series: list[Decimal] = []
+    current = seed_decimal
+    for i in range(days):
+        d = cutoff + _td(days=i)
+        if d in in_window:
+            current = in_window[d]
+        series.append(current)
+    return series
 
 
 def _snapshot(asset: Asset) -> None:

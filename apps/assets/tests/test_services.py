@@ -194,3 +194,61 @@ def test_refresh_one_asset_records_failure(fake_scraper):
     ok, err = refresh_one_asset(a)
     assert ok is False
     assert "boom" in err
+
+
+from datetime import datetime as _dt, timedelta as _td, timezone as _tz, date as _date
+
+
+@pytest.mark.django_db
+def test_build_asset_value_series_returns_30_days_by_default():
+    user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")
+    a = create_asset(user=user, kind="manual", name="X", current_value=Decimal("100"))
+    from apps.assets.services import build_asset_value_series
+    series = build_asset_value_series(a)
+    assert len(series) == 30
+
+
+@pytest.mark.django_db
+def test_build_asset_value_series_forward_fills_from_seed():
+    """If the only snapshot is older than the window, every day in the window
+    should report that snapshot's value (forward-fill from seed)."""
+    user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")
+    a = Asset.objects.create(user=user, kind="manual", name="X", current_value=Decimal("0"))
+    AssetPriceSnapshot.objects.create(
+        asset=a, at=_dt.now(tz=_tz.utc) - _td(days=60), value=Decimal("500"),
+    )
+    from apps.assets.services import build_asset_value_series
+    series = build_asset_value_series(a, days=30)
+    assert all(v == Decimal("500") for v in series)
+
+
+@pytest.mark.django_db
+def test_build_asset_value_series_picks_up_in_window_changes():
+    """A snapshot inside the window updates the value from that day forward."""
+    user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")
+    a = Asset.objects.create(user=user, kind="manual", name="X", current_value=Decimal("0"))
+    now = _dt.now(tz=_tz.utc)
+    AssetPriceSnapshot.objects.create(asset=a, at=now - _td(days=60), value=Decimal("100"))
+    AssetPriceSnapshot.objects.create(asset=a, at=now - _td(days=10), value=Decimal("200"))
+    from apps.assets.services import build_asset_value_series
+    series = build_asset_value_series(a, days=30)
+    # Series is recent-last; days 0..19 should be 100, days 20..29 should be 200.
+    # Allow for off-by-one if "today" overlaps the snapshot day.
+    assert series[0] == Decimal("100")
+    assert series[-1] == Decimal("200")
+    # Some day within the last 11 should be 200.
+    assert any(v == Decimal("200") for v in series[-11:])
+
+
+@pytest.mark.django_db
+def test_build_asset_value_series_empty_when_no_snapshots():
+    user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")
+    a = Asset.objects.create(user=user, kind="manual", name="X", current_value=Decimal("0"))
+    # No snapshots at all (edge case — create_asset normally produces one).
+    from apps.assets.services import build_asset_value_series
+    series = build_asset_value_series(a, days=30)
+    # The chart helper renders a "not enough data" placeholder when len < 2,
+    # so returning all-zeros or an empty list both work. We pick all-zeros for
+    # consistency with the dashboard pipeline (which also seeds zero).
+    assert len(series) == 30
+    assert all(v == Decimal("0") for v in series)
