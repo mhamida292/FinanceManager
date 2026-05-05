@@ -140,3 +140,37 @@ def test_asset_detail_anonymous_redirects():
     r = c.get(reverse("assets:detail", args=[1]))
     assert r.status_code == 302
     assert "/login/" in r["Location"]
+
+
+def test_refresh_one_post_triggers_service(alice, alice_client):
+    a = Asset.objects.create(
+        user=alice, kind="scraped", name="Gold",
+        source_url="https://example.com/gold", quantity=Decimal("2"),
+    )
+    with patch("apps.assets.views.refresh_one_asset") as mock_refresh:
+        mock_refresh.return_value = (True, "")
+        r = alice_client.post(reverse("assets:refresh_one", args=[a.id]))
+    assert r.status_code == 302
+    assert reverse("assets:detail", args=[a.id]) in r["Location"]
+    mock_refresh.assert_called_once()
+    # First positional arg should be the Asset instance.
+    called_arg = mock_refresh.call_args.args[0]
+    assert called_arg.id == a.id
+
+
+def test_refresh_one_get_not_allowed(alice, alice_client):
+    a = Asset.objects.create(
+        user=alice, kind="scraped", name="Gold",
+        source_url="https://example.com/gold", quantity=Decimal("1"),
+    )
+    r = alice_client.get(reverse("assets:refresh_one", args=[a.id]))
+    assert r.status_code == 405
+
+
+def test_refresh_one_404_for_other_user(alice, bob_client):
+    a = Asset.objects.create(
+        user=alice, kind="scraped", name="Gold",
+        source_url="https://example.com/gold", quantity=Decimal("1"),
+    )
+    r = bob_client.post(reverse("assets:refresh_one", args=[a.id]))
+    assert r.status_code == 404

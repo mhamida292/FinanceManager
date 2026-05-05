@@ -10,5 +10,6 @@ urlpatterns = [
     path("<int:asset_id>/", views.asset_detail, name="detail"),
     path("<int:asset_id>/edit/", views.edit_asset, name="edit"),
     path("<int:asset_id>/delete/", views.delete_asset_view, name="delete"),
+    path("<int:asset_id>/refresh/", views.refresh_one, name="refresh_one"),
     path("refresh/", views.refresh_prices, name="refresh"),
 ]

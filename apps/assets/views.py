@@ -9,7 +9,8 @@ from django.views.decorators.http import require_http_methods
 
 from .models import Asset
 from .services import (
-    build_asset_value_series, create_asset, delete_asset, refresh_scraped_assets, update_asset,
+    build_asset_value_series, create_asset, delete_asset, refresh_one_asset,
+    refresh_scraped_assets, update_asset,
 )
 
 
@@ -140,3 +141,15 @@ def refresh_prices(request):
     else:
         messages.success(request, f"Refreshed {result.updated} scraped asset(s).")
     return HttpResponseRedirect(reverse("assets:list"))
+
+
+@login_required
+@require_http_methods(["POST"])
+def refresh_one(request, asset_id):
+    asset = get_object_or_404(Asset.objects.for_user(request.user), pk=asset_id)
+    ok, err = refresh_one_asset(asset)
+    if ok:
+        messages.success(request, f"Refreshed {asset.name}.")
+    else:
+        messages.error(request, f"Refresh failed: {err}")
+    return HttpResponseRedirect(reverse("assets:detail", args=[asset.id]))
