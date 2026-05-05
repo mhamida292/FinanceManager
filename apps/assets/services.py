@@ -54,9 +54,10 @@ def refresh_scraped_assets(*, user) -> RefreshResult:
             except Exception as exc:
                 failed.append((a.id, str(exc)))
                 continue
+            a.last_unit_price = result.price.quantize(Decimal("0.0001"))
             a.current_value = (result.price * a.quantity).quantize(Decimal("0.01"))
             a.last_priced_at = result.at
-            a.save(update_fields=["current_value", "last_priced_at"])
+            a.save(update_fields=["last_unit_price", "current_value", "last_priced_at"])
             _snapshot(a)
             updated += 1
 

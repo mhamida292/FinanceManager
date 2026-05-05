@@ -125,3 +125,19 @@ def test_delete_asset_cascades_snapshots():
     assert AssetPriceSnapshot.objects.filter(asset=a).count() == 2
     delete_asset(a)
     assert AssetPriceSnapshot.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_refresh_persists_unit_price(fake_scraper):
+    user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")
+    a = create_asset(
+        user=user, kind="scraped", name="Gold Eagle",
+        source_url="https://example.com/gold", quantity=Decimal("3"),
+    )
+    fake_scraper.prices_by_url = {"https://example.com/gold": Decimal("2734.50")}
+
+    refresh_scraped_assets(user=user)
+
+    a.refresh_from_db()
+    assert a.last_unit_price == Decimal("2734.5000")
+    assert a.current_value == Decimal("8203.50")  # quantity x unit price
