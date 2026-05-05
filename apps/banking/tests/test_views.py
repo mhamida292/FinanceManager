@@ -773,3 +773,49 @@ def test_spending_page_month_navigation_invalid_falls_back(client):
     assert response.status_code == 200
     # Bad input → falls back to current month.
     assert response.context["next_month"] is None
+
+
+from apps.banking.views import _resolve_page_size, ALLOWED_PAGE_SIZES
+
+
+class _FakeReq:
+    """Minimal stand-in for Django HttpRequest — only `.GET` is used by the helper."""
+    def __init__(self, get_params):
+        self.GET = get_params
+
+
+def test_resolve_page_size_default_when_missing():
+    key, n = _resolve_page_size(_FakeReq({}))
+    assert key == "50"
+    assert n == 50
+
+
+def test_resolve_page_size_explicit_known_values():
+    for raw, expected_n in [("25", 25), ("50", 50), ("100", 100), ("200", 200)]:
+        key, n = _resolve_page_size(_FakeReq({"size": raw}))
+        assert key == raw
+        assert n == expected_n
+
+
+def test_resolve_page_size_all_caps_at_1000():
+    key, n = _resolve_page_size(_FakeReq({"size": "all"}))
+    assert key == "all"
+    assert n == 1000
+
+
+def test_resolve_page_size_invalid_falls_back():
+    for raw in ["foo", "99", "0", "-50", "1000", " "]:
+        key, n = _resolve_page_size(_FakeReq({"size": raw}))
+        assert key == "50"
+        assert n == 50
+
+
+def test_resolve_page_size_case_insensitive_for_all():
+    key, n = _resolve_page_size(_FakeReq({"size": "ALL"}))
+    assert key == "all"
+    assert n == 1000
+
+
+def test_allowed_page_sizes_constants():
+    assert set(ALLOWED_PAGE_SIZES.keys()) == {"25", "50", "100", "200", "all"}
+    assert ALLOWED_PAGE_SIZES["all"] == 1000

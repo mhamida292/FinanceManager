@@ -22,6 +22,19 @@ from .models import Account, Institution, Transaction, UserCategory
 from .services import income_expense_summary, link_institution, set_category as set_category_service, spending_breakdown, sync_institution
 
 
+ALLOWED_PAGE_SIZES: dict[str, int] = {"25": 25, "50": 50, "100": 100, "200": 200, "all": 1000}
+DEFAULT_PAGE_SIZE_KEY = "50"
+
+
+def _resolve_page_size(request) -> tuple[str, int]:
+    """Map ?size= query param to (raw_key_for_template, integer_per_page).
+    Unknown / missing values fall back to the default (50)."""
+    raw = (request.GET.get("size") or "").strip().lower()
+    if raw in ALLOWED_PAGE_SIZES:
+        return raw, ALLOWED_PAGE_SIZES[raw]
+    return DEFAULT_PAGE_SIZE_KEY, ALLOWED_PAGE_SIZES[DEFAULT_PAGE_SIZE_KEY]
+
+
 def _page_window(current: int, total: int, edge: int = 1, around: int = 2) -> list[int | None]:
     """Numbered-pagination window. Always shows pages 1..edge, total-edge+1..total, and current ± around. None entries are ellipsis gaps."""
     if total <= edge * 2 + around * 2 + 1:
