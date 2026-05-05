@@ -154,17 +154,23 @@ def value_chart_svg(values: Iterable[Decimal], days: int = 30, width: int = 600,
 
     parts.append('</svg>')
 
-    # Tooltip element (HTML, positioned absolutely). Includes a label header
-    # so callers can distinguish "Net worth" vs "Asset value" etc.
+    # Tooltip element (HTML, positioned absolutely). Includes an optional label
+    # header so callers can distinguish "Asset value" etc.; empty label suppresses
+    # the row entirely (dashboard's net-worth chart uses this to keep its prior
+    # two-row tooltip).
     from html import escape as _html_escape
-    label_html = _html_escape(value_label)
+    label_html = _html_escape(value_label) if value_label else ""
+    label_div = (
+        f'<div class="nw-tt-label" style="color: var(--muted, #888); font-size: 10px; margin-bottom: 2px;">{label_html}</div>'
+        if label_html else ""
+    )
     parts.append(
         f'<div class="nw-tooltip" style="position: absolute; display: none; '
         f'background: var(--surface, #161616); border: 1px solid var(--border, #333); '
         f'border-radius: 4px; padding: 6px 10px; font-size: 11px; '
         f'pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); white-space: nowrap;">'
         f'<div class="nw-tt-date" style="color: var(--muted, #888); font-size: 10px; margin-bottom: 2px;"></div>'
-        f'<div class="nw-tt-label" style="color: var(--muted, #888); font-size: 10px; margin-bottom: 2px;">{label_html}</div>'
+        f'{label_div}'
         f'<div class="nw-tt-value" style="color: var(--accent-positive, #88a877); font-weight: 600;"></div>'
         f'</div>'
     )
@@ -237,9 +243,9 @@ def value_chart_svg(values: Iterable[Decimal], days: int = 30, width: int = 600,
 
 
 def networth_chart_svg(values: Iterable[Decimal], days: int = 30, width: int = 600, height: int = 320, end_date: date | None = None) -> str:
-    """Backward-compatible wrapper that calls value_chart_svg with the
-    'Net worth' label. Existing dashboard callers keep working unchanged."""
-    return value_chart_svg(values, days=days, width=width, height=height, end_date=end_date, value_label="Net worth")
+    """Backward-compatible wrapper that calls value_chart_svg with no label,
+    preserving the dashboard's prior two-row tooltip (date + value) byte-for-byte."""
+    return value_chart_svg(values, days=days, width=width, height=height, end_date=end_date, value_label="")
 
 
 @register.simple_tag

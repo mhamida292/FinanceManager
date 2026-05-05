@@ -59,10 +59,20 @@ def test_value_chart_svg_accepts_custom_label():
 
 
 def test_networth_chart_svg_still_works_via_wrapper():
-    """Backward-compat: the original entry point keeps working unchanged."""
+    """Backward-compat: the original entry point keeps working unchanged.
+    Dashboard tooltip stays at two rows (date + value) — the label row must
+    be suppressed when value_label is empty."""
     from apps.dashboard.templatetags.networth_chart import networth_chart_svg
     out = networth_chart_svg([_D("100"), _D("110")])
     assert "<svg" in out
+    # Empty label → label row not rendered (preserves dashboard's prior tooltip).
+    assert 'class="nw-tt-label"' not in out
+
+
+def test_value_chart_svg_empty_label_suppresses_row():
+    """Passing value_label='' should omit the label row entirely."""
+    out = value_chart_svg([_D("100"), _D("110")], value_label="")
+    assert 'class="nw-tt-label"' not in out
 
 
 def test_value_chart_svg_under_two_points_renders_placeholder():
