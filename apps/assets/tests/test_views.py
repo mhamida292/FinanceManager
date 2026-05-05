@@ -214,3 +214,17 @@ def test_asset_detail_manual_hides_refresh_and_unit_price(alice, alice_client):
     assert reverse("assets:refresh_one", args=[a.id]) not in body
     # No "Unit price" stat card.
     assert "Unit price" not in body
+
+
+def test_asset_list_name_links_to_detail(alice, alice_client):
+    a = Asset.objects.create(user=alice, kind="manual", name="Linkable Painting", current_value=Decimal("100"))
+    r = alice_client.get(reverse("assets:list"))
+    body = r.content.decode()
+    assert reverse("assets:detail", args=[a.id]) in body
+    # The name should appear inside an <a> tag pointing at detail.
+    import re
+    pattern = re.compile(
+        r'<a[^>]+href="' + re.escape(reverse("assets:detail", args=[a.id])) + r'"[^>]*>[^<]*Linkable Painting',
+        re.DOTALL,
+    )
+    assert pattern.search(body), f"Asset name not wrapped in detail link: body excerpt = {body[:500]}"

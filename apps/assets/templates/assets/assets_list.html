@@ -48,7 +48,7 @@
         <tr style="border-top: 1px solid var(--border);">
           <td class="px-4 py-3 text-center">{% if a.kind == 'scraped' %}📈{% else %}✎{% endif %}</td>
           <td class="px-4 py-3">
-            <div class="font-medium">{{ a.name }}</div>
+            <a href="{% url 'assets:detail' a.id %}" class="font-medium hover:underline" style="color: var(--text);">{{ a.name }}</a>
             {% if a.notes %}<div class="text-xs" style="color: var(--muted);">{{ a.notes }}</div>{% endif %}
           </td>
           <td class="px-4 py-3 text-right num" style="color: var(--muted);">
@@ -74,9 +74,9 @@
     <div class="px-4 py-3" style="{% if not forloop.first %}border-top: 1px solid var(--border);{% endif %}">
       <div class="flex items-baseline justify-between gap-3">
         <div class="min-w-0 flex-1">
-          <div class="font-medium truncate">
+          <a href="{% url 'assets:detail' a.id %}" class="font-medium truncate hover:underline" style="color: var(--text); display: block;">
             <span class="mr-1">{% if a.kind == 'scraped' %}📈{% else %}✎{% endif %}</span>{{ a.name }}
-          </div>
+          </a>
           {% if a.notes %}<div class="text-xs truncate" style="color: var(--muted);">{{ a.notes }}</div>{% endif %}
         </div>
         <div class="num font-semibold whitespace-nowrap" style="color: var(--accent-assets);">{{ a.current_value|money }}</div>
