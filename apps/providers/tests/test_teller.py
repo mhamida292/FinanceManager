@@ -135,7 +135,10 @@ def test_fetch_accounts_with_transactions_parses_payload(teller_settings):
     assert t.memo == ""
     assert t.pending is False
     assert t.posted_at.year == 2026 and t.posted_at.month == 4 and t.posted_at.day == 15
-    assert t.posted_at.hour == 0 and t.posted_at.minute == 0
+    # Teller returns a date-only string; the provider anchors to NOON UTC so the
+    # date survives ±12h timezone shifts when rendered in any local zone (see
+    # apps/providers/teller.py:_parse_transaction).
+    assert t.posted_at.hour == 12 and t.posted_at.minute == 0
 
 
 def test_parse_transaction_extracts_category():
