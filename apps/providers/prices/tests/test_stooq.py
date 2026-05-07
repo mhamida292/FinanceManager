@@ -1,8 +1,6 @@
 from decimal import Decimal
 from unittest.mock import MagicMock
 
-import pytest
-
 from apps.providers.prices.stooq import StooqPriceProvider
 
 

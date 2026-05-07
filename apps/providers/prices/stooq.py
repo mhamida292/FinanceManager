@@ -49,6 +49,12 @@ class StooqPriceProvider:
             return [q for f in concurrent.futures.as_completed(futures) if (q := f.result()) is not None]
 
     def _safe_fetch_one(self, symbol: str, at: datetime) -> PriceQuote | None:
+        """Worker-thread wrapper around `_fetch_one` — never raises.
+
+        Returns the quote on success or None on any failure. The non-raising
+        contract is what lets `fetch_quotes` call `f.result()` without a
+        try/except in its result-collection comprehension.
+        """
         try:
             return self._fetch_one(symbol, at)
         except Exception:
