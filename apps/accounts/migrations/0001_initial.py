@@ -55,7 +55,7 @@ class Migration(migrations.Migration):
                 "ordering": ["-started_at"],
                 "indexes": [
                     models.Index(
-                        fields=["user", "-started_at"], name="accounts_sy_user_id_cefeb6_idx"
+                        fields=["user", "-started_at"], name="accounts_sy_user_id_786280_idx"
                     )
                 ],
             },
