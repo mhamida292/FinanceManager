@@ -10,7 +10,7 @@ Tests pass `runner=` to skip the thread and run synchronously.
 from __future__ import annotations
 
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Callable
 
 from django.contrib.auth import get_user_model
@@ -85,6 +85,12 @@ def format_absolute(dt: datetime) -> str:
 
 
 def format_relative(dt: datetime, *, now: datetime | None = None) -> str:
+    """e.g. 'just now', '5m ago', '3h ago', '2d ago'.
+
+    Boundaries: < 45s → 'just now', < 1h → minutes, < 24h → hours, otherwise days.
+    All boundaries use rounding (`round(...)`) — matches the JS `Math.round` in the
+    top-bar poller so server- and client-rendered text agree.
+    """
     now = now or timezone.now()
     delta = now - dt
     seconds = int(delta.total_seconds())

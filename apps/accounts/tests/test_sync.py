@@ -97,6 +97,7 @@ def test_run_sync_marks_error_when_service_raises(alice, monkeypatch):
         raise RuntimeError("kaboom")
 
     monkeypatch.setattr(accounts_services, "refresh_manual_prices", boom)
+    # Never reached (manual_prices raises first); patched only for isolation in case of refactor.
     monkeypatch.setattr(accounts_services, "refresh_scraped_assets", lambda *, user: None)
 
     run = SyncRun.objects.create(user=alice)
