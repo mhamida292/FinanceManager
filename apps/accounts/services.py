@@ -2,8 +2,12 @@
 
 The view calls `start_sync(user)` which creates a SyncRun row and dispatches
 the actual refresh work to a background thread. The thread invokes the
-existing per-domain refresh services (manual prices, scraped assets) and
-writes the final status back to the SyncRun row.
+existing per-domain refresh services (Teller bank sync, manual investment
+prices, scraped assets) and writes the final status back to the SyncRun row.
+
+SimpleFIN institutions are deliberately skipped here — they're handled by
+the nightly cron and the per-institution button on the settings page. To
+re-include them, drop the `.exclude(provider="simplefin")` filter below.
 
 Tests pass `runner=` to skip the thread and run synchronously.
 """
@@ -18,6 +22,8 @@ from django.db import connections
 from django.utils import timezone
 
 from apps.assets.services import refresh_scraped_assets
+from apps.banking.models import Institution
+from apps.banking.services import sync_institution
 from apps.investments.services import refresh_manual_prices
 
 from .models import SyncRun
@@ -59,17 +65,34 @@ def _run_sync(user_id: int, run_id: int) -> None:
 
     Safe to call synchronously from tests. Connection cleanup is the
     responsibility of the caller that put us on a thread (see `_spawn_thread`).
+
+    Per-institution failures are isolated: a single bad Teller cert doesn't
+    abort the rest of the sync. Institution-level errors are joined with any
+    per-asset scrape errors into `errors_text`; the overall run is still
+    reported as `success` so the UI doesn't scream when one corner is broken.
     """
     try:
         user = User.objects.get(pk=user_id)
+
+        institution_errors: list[str] = []
+        transactions_total = 0
+        for inst in Institution.objects.for_user(user).exclude(provider="simplefin"):
+            try:
+                bank_result = sync_institution(inst)
+                transactions_total += bank_result.transactions_created
+            except Exception as exc:
+                institution_errors.append(f"{inst.effective_name}: {exc}")
+
         refreshed_holdings = refresh_manual_prices(user=user)
         asset_result = refresh_scraped_assets(user=user)
 
         summary = (
+            f"{transactions_total} transaction(s), "
             f"{refreshed_holdings} manual price(s), "
             f"{asset_result.updated} asset(s)."
         )
-        errors = "; ".join(f"asset {aid}: {msg}" for aid, msg in asset_result.failed)
+        asset_errors = [f"asset {aid}: {msg}" for aid, msg in asset_result.failed]
+        errors = "; ".join(institution_errors + asset_errors)
 
         SyncRun.objects.filter(pk=run_id).update(
             status=SyncRun.STATUS_SUCCESS,

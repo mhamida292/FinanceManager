@@ -131,6 +131,88 @@ def test_start_sync_returns_running_run_and_uses_injected_runner(alice):
     assert run.status == SyncRun.STATUS_SUCCESS
 
 
+@pytest.mark.django_db
+def test_run_sync_syncs_non_simplefin_institutions_and_skips_simplefin(alice, monkeypatch):
+    """Teller (and any other non-SimpleFIN) institutions go through sync_institution.
+    SimpleFIN institutions are intentionally skipped — they're handled by the nightly
+    cron + the per-institution button on the settings page.
+    """
+    from apps.accounts import services as accounts_services
+    from apps.accounts.models import SyncRun
+    from apps.banking.models import Institution
+
+    teller = Institution.objects.create(user=alice, provider="teller", name="Chase", access_url="x")
+    Institution.objects.create(user=alice, provider="simplefin", name="OldBank", access_url="y")
+
+    synced_ids: list[int] = []
+
+    class _BankResult:
+        accounts_created = 0
+        accounts_updated = 1
+        transactions_created = 5
+        transactions_updated = 0
+
+    def fake_sync_institution(inst):
+        synced_ids.append(inst.id)
+        return _BankResult()
+
+    class _AssetR:
+        updated = 0
+        failed: list = []
+
+    monkeypatch.setattr(accounts_services, "sync_institution", fake_sync_institution)
+    monkeypatch.setattr(accounts_services, "refresh_manual_prices", lambda *, user: 0)
+    monkeypatch.setattr(accounts_services, "refresh_scraped_assets", lambda *, user: _AssetR())
+
+    run = SyncRun.objects.create(user=alice)
+    accounts_services._run_sync(alice.id, run.id)
+
+    assert synced_ids == [teller.id]  # SimpleFIN institution NOT touched
+    run.refresh_from_db()
+    assert run.status == SyncRun.STATUS_SUCCESS
+    assert "5 transaction" in run.summary
+
+
+@pytest.mark.django_db
+def test_run_sync_isolates_per_institution_failures(alice, monkeypatch):
+    """One bad institution doesn't kill the run; its error is recorded, others continue."""
+    from apps.accounts import services as accounts_services
+    from apps.accounts.models import SyncRun
+    from apps.banking.models import Institution
+
+    bad = Institution.objects.create(user=alice, provider="teller", name="Bad", access_url="x")
+    good = Institution.objects.create(user=alice, provider="teller", name="Good", access_url="y")
+
+    class _BankResult:
+        accounts_created = 0
+        accounts_updated = 1
+        transactions_created = 3
+        transactions_updated = 0
+
+    def maybe_fail(inst):
+        if inst.id == bad.id:
+            raise RuntimeError("cert expired")
+        return _BankResult()
+
+    class _AssetR:
+        updated = 0
+        failed: list = []
+
+    monkeypatch.setattr(accounts_services, "sync_institution", maybe_fail)
+    monkeypatch.setattr(accounts_services, "refresh_manual_prices", lambda *, user: 0)
+    monkeypatch.setattr(accounts_services, "refresh_scraped_assets", lambda *, user: _AssetR())
+
+    run = SyncRun.objects.create(user=alice)
+    accounts_services._run_sync(alice.id, run.id)
+
+    run.refresh_from_db()
+    assert run.status == SyncRun.STATUS_SUCCESS  # partial failure is still success overall
+    assert "Bad" in run.errors_text
+    assert "cert expired" in run.errors_text
+    assert "3 transaction" in run.summary  # the good institution's count is reflected
+    assert good.id  # silence unused-var lint
+
+
 @pytest.fixture
 def alice_client(alice):
     c = Client()
