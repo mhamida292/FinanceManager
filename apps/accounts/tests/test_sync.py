@@ -2,6 +2,8 @@ from datetime import timedelta
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.test import Client
+from django.urls import reverse
 from django.utils import timezone
 
 User = get_user_model()
@@ -129,10 +131,6 @@ def test_start_sync_returns_running_run_and_uses_injected_runner(alice):
     assert run.status == SyncRun.STATUS_SUCCESS
 
 
-from django.test import Client
-from django.urls import reverse
-
-
 @pytest.fixture
 def alice_client(alice):
     c = Client()
@@ -178,6 +176,7 @@ def test_sync_all_does_not_create_second_run_when_one_is_already_running(alice, 
     assert SyncRun.objects.filter(user=alice).count() == 1
 
 
+@pytest.mark.django_db
 def test_sync_all_rejects_anonymous(client):
     response = client.post(reverse("sync_all"))
     assert response.status_code in (302, 403)  # LoginRequiredMiddleware redirects to login

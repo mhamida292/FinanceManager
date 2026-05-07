@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
@@ -21,7 +23,6 @@ from .services import _spawn_thread, format_absolute, format_relative, start_syn
 _default_runner = _spawn_thread
 
 # Stuck-run threshold: a "running" SyncRun older than this is coerced to "error" on read.
-from datetime import timedelta
 STALE_RUN_AFTER = timedelta(minutes=5)
 
 
