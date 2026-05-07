@@ -241,3 +241,14 @@ def test_sync_status_only_returns_current_users_runs(alice, alice_client):
     response = alice_client.get(reverse("sync_status"))
     body = response.json()
     assert body["status"] == "idle"  # alice has none
+
+
+def test_top_bar_renders_sync_status_scaffolding(alice, alice_client):
+    """The base template includes the elements the JS poller depends on."""
+    response = alice_client.get(reverse("home"))
+    body = response.content.decode()
+
+    assert 'id="sync-bar"' in body
+    assert 'id="sync-time"' in body
+    assert 'id="sync-btn"' in body
+    assert reverse("sync_status") in body  # JS reads it from data-status-url

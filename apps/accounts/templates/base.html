@@ -53,11 +53,20 @@
     </a>
   </div>
   <div class="flex items-center gap-3">
-    <form action="{% url 'sync_all' %}" method="post" class="m-0">
-      {% csrf_token %}
-      <input type="hidden" name="next" value="{{ request.get_full_path }}">
-      <button type="submit" class="p-1 text-sm" style="color: var(--muted);" aria-label="Sync everything" title="Sync everything (banks, investments, assets)">⟳</button>
-    </form>
+    <div id="sync-bar" class="flex items-center gap-2"
+         data-status-url="{% url 'sync_status' %}">
+      <span class="hidden sm:inline text-xs" style="color: var(--muted);">
+        Last synced
+        <time id="sync-time" datetime="" title="">never</time>
+      </span>
+      <form id="sync-form" action="{% url 'sync_all' %}" method="post" class="m-0">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button id="sync-btn" type="submit" class="p-1 text-sm" style="color: var(--muted);"
+                aria-label="Sync everything"
+                title="Sync manual prices + scraped assets">⟳</button>
+      </form>
+    </div>
     <button id="theme-toggle" class="p-1 text-sm" style="color: var(--muted);" aria-label="Toggle theme" title="Toggle theme">
       <span class="theme-icon-dark">☾</span>
       <span class="theme-icon-light hidden">☀</span>
@@ -224,6 +233,88 @@
       var openness = (finalPos + WIDTH) / WIDTH;
       snapTo(openness > 0.5);
     }, { passive: true });
+  })();
+</script>
+
+<script>
+  // Sync status poller: watches /sync-status/, updates the "Last synced" stamp,
+  // disables the ⟳ button while a sync is running, and refreshes the relative
+  // time text every 30s without re-fetching the server.
+  (function () {
+    var bar = document.getElementById("sync-bar");
+    if (!bar) return;
+    var btn = document.getElementById("sync-btn");
+    var form = document.getElementById("sync-form");
+    var timeEl = document.getElementById("sync-time");
+    var statusUrl = bar.dataset.statusUrl;
+    var polling = false;
+
+    function humanizeRelative(d) {
+      var s = (Date.now() - d.getTime()) / 1000;
+      if (s < 45) return "just now";
+      if (s < 3600) return Math.round(s / 60) + "m ago";
+      if (s < 86400) return Math.round(s / 3600) + "h ago";
+      return Math.round(s / 86400) + "d ago";
+    }
+
+    function applyStatus(s) {
+      if (s.finished_at_iso) {
+        timeEl.dateTime = s.finished_at_iso;
+        timeEl.title = s.finished_at_absolute || "";
+        timeEl.textContent = s.finished_at_relative || "just now";
+      }
+      if (s.status === "running") {
+        btn.disabled = true;
+        btn.textContent = "…";
+        btn.style.opacity = "0.5";
+        if (!polling) startPolling();
+      } else {
+        btn.disabled = false;
+        btn.textContent = "⟳";
+        btn.style.opacity = "";
+        polling = false;
+      }
+    }
+
+    function fetchStatus() {
+      return fetch(statusUrl, { credentials: "same-origin" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { if (j) applyStatus(j); });
+    }
+
+    function startPolling() {
+      polling = true;
+      var tick = function () {
+        if (!polling) return;
+        fetchStatus().then(function () {
+          if (polling) setTimeout(tick, 2000);
+        });
+      };
+      tick();
+    }
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      btn.disabled = true;
+      btn.textContent = "…";
+      btn.style.opacity = "0.5";
+      fetch(form.action, {
+        method: "POST",
+        body: new FormData(form),
+        credentials: "same-origin",
+      }).finally(function () {
+        startPolling();
+      });
+    });
+
+    // Refresh the visible "Xm ago" text every 30s without re-fetching.
+    setInterval(function () {
+      if (timeEl.dateTime) {
+        timeEl.textContent = humanizeRelative(new Date(timeEl.dateTime));
+      }
+    }, 30000);
+
+    fetchStatus();
   })();
 </script>
 
