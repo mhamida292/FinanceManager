@@ -39,11 +39,27 @@ def start_sync(user, *, runner: Runner | None = None) -> SyncRun:
 
 
 def _spawn_thread(user_id: int, run_id: int) -> None:
-    threading.Thread(target=_run_sync, args=(user_id, run_id), daemon=True).start()
+    """Spawn a daemon thread that runs the worker and closes its DB connection on exit.
+
+    Connection cleanup lives here (not inside `_run_sync`) so the worker function
+    is thread-agnostic — tests can call `_run_sync` directly on the main thread
+    without inadvertently closing pytest-django's connection.
+    """
+    def _target() -> None:
+        try:
+            _run_sync(user_id, run_id)
+        finally:
+            connections.close_all()
+
+    threading.Thread(target=_target, daemon=True).start()
 
 
 def _run_sync(user_id: int, run_id: int) -> None:
-    """Worker body. Runs in a fresh thread; closes its DB connections at the end."""
+    """Worker body — pure logic, no thread-lifecycle concerns.
+
+    Safe to call synchronously from tests. Connection cleanup is the
+    responsibility of the caller that put us on a thread (see `_spawn_thread`).
+    """
     try:
         user = User.objects.get(pk=user_id)
         refreshed_holdings = refresh_manual_prices(user=user)
@@ -67,8 +83,6 @@ def _run_sync(user_id: int, run_id: int) -> None:
             errors_text=str(exc),
             finished_at=timezone.now(),
         )
-    finally:
-        connections.close_all()
 
 
 # ---------- Timestamp formatting (used by sync_status endpoint) ----------
