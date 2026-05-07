@@ -7,9 +7,9 @@ class SyncRun(models.Model):
     STATUS_SUCCESS = "success"
     STATUS_ERROR = "error"
     STATUS_CHOICES = [
-        (STATUS_RUNNING, "running"),
-        (STATUS_SUCCESS, "success"),
-        (STATUS_ERROR, "error"),
+        (STATUS_RUNNING, "Running"),
+        (STATUS_SUCCESS, "Succeeded"),
+        (STATUS_ERROR, "Failed"),
     ]
 
     user = models.ForeignKey(
@@ -28,4 +28,5 @@ class SyncRun(models.Model):
         ordering = ["-started_at"]
 
     def __str__(self) -> str:
-        return f"SyncRun(user={self.user_id}, status={self.status}, started_at={self.started_at:%Y-%m-%d %H:%M})"
+        when = self.started_at.strftime("%Y-%m-%d %H:%M") if self.started_at else "unsaved"
+        return f"SyncRun(user={self.user_id}, status={self.status}, started_at={when})"
