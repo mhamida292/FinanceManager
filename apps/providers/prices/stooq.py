@@ -12,6 +12,7 @@ Stooq uses lowercase symbols with a ``.us`` suffix for US tickers. We normalize
 on the way in (symbol → ``<symbol>.us``) and strip the ``.US`` suffix off the
 response so the caller sees the symbol they passed in.
 """
+import concurrent.futures
 import csv
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -34,24 +35,24 @@ class StooqPriceProvider:
 
     def fetch_quotes(self, symbols: Iterable[str]) -> list[PriceQuote]:
         # Stooq's /q/l endpoint doesn't reliably batch comma-separated symbols
-        # (the response collapses them into one malformed row). Do one request
-        # per symbol — Stooq is fast and lightweight, the cost is negligible.
+        # (the response collapses them into one malformed row), so we make one
+        # request per symbol. They run in parallel — the symbols are independent
+        # and the work is purely network I/O.
         normalized = [s.strip().upper() for s in symbols if s and s.strip()]
         if not normalized:
             return []
 
         now = datetime.now(tz=timezone.utc)
-        quotes: list[PriceQuote] = []
 
-        for symbol in normalized:
-            try:
-                quote = self._fetch_one(symbol, now)
-            except Exception:
-                continue
-            if quote is not None:
-                quotes.append(quote)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(self._safe_fetch_one, s, now) for s in normalized]
+            return [q for f in concurrent.futures.as_completed(futures) if (q := f.result()) is not None]
 
-        return quotes
+    def _safe_fetch_one(self, symbol: str, at: datetime) -> PriceQuote | None:
+        try:
+            return self._fetch_one(symbol, at)
+        except Exception:
+            return None
 
     def _fetch_one(self, symbol: str, at: datetime) -> PriceQuote | None:
         url = f"https://stooq.com/q/l/?s={symbol.lower()}.us&i=d&f=sd2t2ohlcvn&h"
