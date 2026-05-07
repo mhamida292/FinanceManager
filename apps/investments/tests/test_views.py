@@ -193,8 +193,10 @@ def test_account_detail_hidden_from_other_user(alice, bob, bob_client):
 
 def test_add_holding_creates_and_redirects(alice, alice_client):
     acc = InvestmentAccount.objects.create(user=alice, source="manual", broker="F", name="A")
+    # The form is multi-row with four columns; the view zips the four POST lists,
+    # so every column must be present (even if empty) or zip() truncates to nothing.
     r = alice_client.post(reverse("investments:add_holding", args=[acc.id]), {
-        "symbol": "vti", "shares": "40", "cost_basis": "8000",
+        "symbol": "vti", "shares": "40", "cost_per_share": "", "cost_basis": "8000",
     })
     assert r.status_code == 302
     h = Holding.objects.get(investment_account=acc)
