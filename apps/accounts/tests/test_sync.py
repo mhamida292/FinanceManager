@@ -180,3 +180,64 @@ def test_sync_all_does_not_create_second_run_when_one_is_already_running(alice, 
 def test_sync_all_rejects_anonymous(client):
     response = client.post(reverse("sync_all"))
     assert response.status_code in (302, 403)  # LoginRequiredMiddleware redirects to login
+
+
+def test_sync_status_returns_idle_when_no_runs(alice, alice_client):
+    response = alice_client.get(reverse("sync_status"))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "idle"
+    assert body["finished_at_iso"] is None
+
+
+def test_sync_status_returns_latest_run_fields(alice, alice_client):
+    from apps.accounts.models import SyncRun
+
+    finished = timezone.now() - timedelta(minutes=2)
+    run = SyncRun.objects.create(user=alice, status=SyncRun.STATUS_SUCCESS,
+                                 summary="3 holdings, 1 asset.")
+    SyncRun.objects.filter(pk=run.pk).update(finished_at=finished)
+
+    response = alice_client.get(reverse("sync_status"))
+    body = response.json()
+
+    assert body["status"] == "success"
+    assert body["summary"] == "3 holdings, 1 asset."
+    assert body["finished_at_iso"] is not None
+    assert body["finished_at_absolute"]  # non-empty
+    assert "ago" in body["finished_at_relative"] or body["finished_at_relative"] == "just now"
+
+
+def test_sync_status_coerces_stale_running_to_error(alice, alice_client):
+    from apps.accounts.models import SyncRun
+
+    stuck = SyncRun.objects.create(user=alice, status=SyncRun.STATUS_RUNNING)
+    SyncRun.objects.filter(pk=stuck.pk).update(
+        started_at=timezone.now() - timedelta(minutes=10),
+    )
+
+    response = alice_client.get(reverse("sync_status"))
+    body = response.json()
+
+    assert body["status"] == "error"
+    assert "interrupted" in body["errors"]
+
+
+def test_sync_status_does_not_coerce_recent_running(alice, alice_client):
+    from apps.accounts.models import SyncRun
+
+    SyncRun.objects.create(user=alice, status=SyncRun.STATUS_RUNNING)
+    response = alice_client.get(reverse("sync_status"))
+    assert response.json()["status"] == "running"
+
+
+def test_sync_status_only_returns_current_users_runs(alice, alice_client):
+    from apps.accounts.models import SyncRun
+
+    bob = User.objects.create_user(username="bob", password="x")
+    SyncRun.objects.create(user=bob, status=SyncRun.STATUS_SUCCESS,
+                           summary="bob's run", finished_at=timezone.now())
+
+    response = alice_client.get(reverse("sync_status"))
+    body = response.json()
+    assert body["status"] == "idle"  # alice has none
