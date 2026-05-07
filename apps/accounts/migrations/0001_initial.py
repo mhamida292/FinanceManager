@@ -34,9 +34,9 @@ class Migration(migrations.Migration):
                     "status",
                     models.CharField(
                         choices=[
-                            ("running", "running"),
-                            ("success", "success"),
-                            ("error", "error"),
+                            ("running", "Running"),
+                            ("success", "Succeeded"),
+                            ("error", "Failed"),
                         ],
                         default="running",
                         max_length=16,
