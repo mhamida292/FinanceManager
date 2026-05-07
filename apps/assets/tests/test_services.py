@@ -252,3 +252,38 @@ def test_build_asset_value_series_empty_when_no_snapshots():
     # consistency with the dashboard pipeline (which also seeds zero).
     assert len(series) == 30
     assert all(v == Decimal("0") for v in series)
+
+
+@pytest.mark.django_db
+def test_refresh_scraped_assets_isolates_individual_failures(fake_scraper):
+    user = User.objects.create_user(username="alice", password="correct-horse-battery-staple")
+    good1 = create_asset(
+        user=user, kind="scraped", name="Gold A",
+        source_url="https://x/good1", quantity=Decimal("1"), unit="oz",
+    )
+    bad = create_asset(
+        user=user, kind="scraped", name="Gold B",
+        source_url="https://x/bad", quantity=Decimal("1"), unit="oz",
+    )
+    good2 = create_asset(
+        user=user, kind="scraped", name="Gold C",
+        source_url="https://x/good2", quantity=Decimal("1"), unit="oz",
+    )
+    no_url = create_asset(user=user, kind="scraped", name="Gold D", quantity=Decimal("1"), unit="oz")
+
+    fake_scraper.prices_by_url = {
+        "https://x/good1": Decimal("100"),
+        "https://x/good2": Decimal("200"),
+    }
+    fake_scraper.errors_by_url = {"https://x/bad": "boom"}
+
+    result = refresh_scraped_assets(user=user)
+
+    assert result.updated == 2
+    failed_ids = {aid for aid, _ in result.failed}
+    assert bad.id in failed_ids
+    assert no_url.id in failed_ids
+    good1.refresh_from_db()
+    good2.refresh_from_db()
+    assert good1.current_value == Decimal("100.00")
+    assert good2.current_value == Decimal("200.00")

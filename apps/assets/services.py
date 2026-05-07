@@ -1,3 +1,4 @@
+import concurrent.futures
 from dataclasses import dataclass
 from datetime import date as _date, timedelta as _td
 from decimal import Decimal
@@ -39,21 +40,32 @@ def update_asset(asset: Asset, **fields) -> Asset:
 
 
 def refresh_scraped_assets(*, user) -> RefreshResult:
-    """Hit every scraped asset's URL for this user; update current_value + snapshot."""
+    """Hit every scraped asset's URL for this user; update current_value + snapshot.
+
+    Per-asset HTTP fetches run in parallel (network-bound, independent). DB writes
+    happen serially after all futures resolve, inside one transaction.atomic() —
+    we do not share Django connections across worker threads.
+    """
     assets = list(Asset.objects.for_user(user).filter(kind="scraped"))
     scraper = get_scraper("css")
-    updated = 0
-    failed: list[tuple[int, str]] = []
 
+    failed: list[tuple[int, str]] = [(a.id, "no source_url") for a in assets if not a.source_url]
+    fetchable = [a for a in assets if a.source_url]
+
+    fetched: list[tuple[Asset, object | None, str]] = []
+    if fetchable:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+            future_to_asset = {pool.submit(_safe_scrape, scraper, a): a for a in fetchable}
+            for fut in concurrent.futures.as_completed(future_to_asset):
+                a = future_to_asset[fut]
+                result, err = fut.result()
+                fetched.append((a, result, err))
+
+    updated = 0
     with transaction.atomic():
-        for a in assets:
-            if not a.source_url:
-                failed.append((a.id, "no source_url"))
-                continue
-            try:
-                result = scraper.fetch(a.source_url, selector=a.css_selector or "")
-            except Exception as exc:
-                failed.append((a.id, str(exc)))
+        for a, result, err in fetched:
+            if err:
+                failed.append((a.id, err))
                 continue
             a.last_unit_price = result.price.quantize(Decimal("0.0001"))
             a.current_value = (result.price * a.quantity).quantize(Decimal("0.01"))
@@ -63,6 +75,13 @@ def refresh_scraped_assets(*, user) -> RefreshResult:
             updated += 1
 
     return RefreshResult(updated=updated, failed=failed)
+
+
+def _safe_scrape(scraper, asset: Asset) -> tuple[object | None, str]:
+    try:
+        return scraper.fetch(asset.source_url, selector=asset.css_selector or ""), ""
+    except Exception as exc:
+        return None, str(exc)
 
 
 def refresh_one_asset(asset: Asset) -> tuple[bool, str]:
