@@ -127,3 +127,57 @@ def test_start_sync_returns_running_run_and_uses_injected_runner(alice):
     assert calls == [(alice.id, run.id)]
     run.refresh_from_db()
     assert run.status == SyncRun.STATUS_SUCCESS
+
+
+from django.test import Client
+from django.urls import reverse
+
+
+@pytest.fixture
+def alice_client(alice):
+    c = Client()
+    c.force_login(alice)
+    return c
+
+
+def test_sync_all_creates_running_run_and_redirects(alice, alice_client, monkeypatch):
+    """POST /sync-all/ creates a SyncRun(status=running) and redirects.
+
+    The default runner would spawn a thread; we replace it with a no-op so the test
+    doesn't kick off real network calls.
+    """
+    from apps.accounts import views as accounts_views
+    from apps.accounts.models import SyncRun
+
+    monkeypatch.setattr(
+        accounts_views, "_default_runner", lambda user_id, run_id: None
+    )
+
+    response = alice_client.post(reverse("sync_all"), {"next": "/"})
+
+    assert response.status_code == 302
+    assert response["Location"] == "/"
+    runs = list(SyncRun.objects.filter(user=alice))
+    assert len(runs) == 1
+    assert runs[0].status == SyncRun.STATUS_RUNNING
+
+
+def test_sync_all_does_not_create_second_run_when_one_is_already_running(alice, alice_client, monkeypatch):
+    from apps.accounts import views as accounts_views
+    from apps.accounts.models import SyncRun
+
+    monkeypatch.setattr(
+        accounts_views, "_default_runner", lambda user_id, run_id: None
+    )
+
+    SyncRun.objects.create(user=alice, status=SyncRun.STATUS_RUNNING)
+
+    response = alice_client.post(reverse("sync_all"), {"next": "/"})
+
+    assert response.status_code == 302
+    assert SyncRun.objects.filter(user=alice).count() == 1
+
+
+def test_sync_all_rejects_anonymous(client):
+    response = client.post(reverse("sync_all"))
+    assert response.status_code in (302, 403)  # LoginRequiredMiddleware redirects to login

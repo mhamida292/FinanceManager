@@ -11,6 +11,7 @@ urlpatterns = [
     path("signup/", views.signup, name="signup"),
     path("settings/", views.SettingsView.as_view(), name="settings"),
     path("sync-all/", views.sync_all, name="sync_all"),
+    path("sync-status/", views.sync_status, name="sync_status"),
     path("transactions/", banking_views.transactions_list, name="transactions"),
     path("spending/", banking_views.spending, name="spending"),
     path("", dashboard_views.dashboard, name="home"),

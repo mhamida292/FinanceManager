@@ -3,18 +3,26 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.views.generic import TemplateView
 
 from apps.assets.models import Asset
-from apps.assets.services import refresh_scraped_assets
 from apps.banking.models import Institution
-from apps.banking.services import sync_institution
 from apps.investments.models import InvestmentAccount
-from apps.investments.services import refresh_manual_prices, sync_simplefin_investments
+
+from .models import SyncRun
+from .services import _spawn_thread, format_absolute, format_relative, start_sync
+
+# Indirection so tests can monkeypatch the runner without touching services.
+_default_runner = _spawn_thread
+
+# Stuck-run threshold: a "running" SyncRun older than this is coerced to "error" on read.
+from datetime import timedelta
+STALE_RUN_AFTER = timedelta(minutes=5)
 
 
 class SettingsView(LoginRequiredMixin, TemplateView):
@@ -62,48 +70,58 @@ def signup(request):
 @login_required
 @require_http_methods(["POST"])
 def sync_all(request):
-    """One-shot: SimpleFIN bank + investment sync for every institution, then refresh manual investment prices and scraped asset prices."""
+    """Kick off a background refresh and redirect immediately.
+
+    SimpleFIN sync is intentionally not wired here right now — only manual
+    investment prices and scraped assets refresh on the ⟳ button. SimpleFIN
+    services remain available for per-institution sync from the settings page
+    and for future re-enable.
+    """
     user = request.user
-    bank_txns = 0
-    inv_holdings = 0
-    errors: list[str] = []
 
-    for inst in Institution.objects.for_user(user):
-        try:
-            r = sync_institution(inst)
-            bank_txns += r.transactions_created
-        except Exception as exc:
-            errors.append(f"{inst.effective_name} bank sync: {exc}")
-        try:
-            r = sync_simplefin_investments(inst)
-            inv_holdings += r.holdings_created
-        except Exception as exc:
-            errors.append(f"{inst.effective_name} investment sync: {exc}")
-
-    try:
-        refreshed_holdings = refresh_manual_prices(user=user)
-    except Exception as exc:
-        refreshed_holdings = 0
-        errors.append(f"manual price refresh: {exc}")
-
-    try:
-        asset_result = refresh_scraped_assets(user=user)
-        refreshed_assets = asset_result.updated
-    except Exception as exc:
-        refreshed_assets = 0
-        errors.append(f"scraped asset refresh: {exc}")
-
-    summary = (
-        f"Synced: {bank_txns} new transaction(s), {inv_holdings} new holding(s), "
-        f"{refreshed_holdings} manual price(s), {refreshed_assets} asset(s)."
-    )
-    if errors:
-        messages.warning(request, summary + " Errors: " + "; ".join(errors))
+    if SyncRun.objects.filter(user=user, status=SyncRun.STATUS_RUNNING).exists():
+        # Defense-in-depth: the UI button is disabled while running, but a stale
+        # tab could still POST. Don't start a second worker.
+        messages.info(request, "A sync is already in progress.")
     else:
-        messages.success(request, summary)
+        start_sync(user, runner=_default_runner)
+        messages.success(request, "Sync started.")
 
-    # Redirect back to where the user was, falling back to dashboard.
     next_url = request.POST.get("next") or reverse("home")
-    if not next_url.startswith("/"):  # absolute or scheme-relative URLs not allowed
+    if not next_url.startswith("/"):
         next_url = reverse("home")
     return HttpResponseRedirect(next_url)
+
+
+@login_required
+@require_http_methods(["GET"])
+def sync_status(request):
+    """JSON: latest sync state for the current user. Polled by the top-bar JS."""
+    run = SyncRun.objects.filter(user=request.user).order_by("-started_at").first()
+
+    if run is None:
+        return JsonResponse({
+            "status": "idle",
+            "summary": "",
+            "errors": "",
+            "finished_at_iso": None,
+            "finished_at_absolute": None,
+            "finished_at_relative": None,
+        })
+
+    if run.status == SyncRun.STATUS_RUNNING and timezone.now() - run.started_at > STALE_RUN_AFTER:
+        SyncRun.objects.filter(pk=run.pk, status=SyncRun.STATUS_RUNNING).update(
+            status=SyncRun.STATUS_ERROR,
+            errors_text="sync interrupted",
+            finished_at=timezone.now(),
+        )
+        run.refresh_from_db()
+
+    return JsonResponse({
+        "status": run.status,
+        "summary": run.summary,
+        "errors": run.errors_text,
+        "finished_at_iso": run.finished_at.isoformat() if run.finished_at else None,
+        "finished_at_absolute": format_absolute(run.finished_at) if run.finished_at else None,
+        "finished_at_relative": format_relative(run.finished_at) if run.finished_at else None,
+    })
