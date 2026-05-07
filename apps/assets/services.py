@@ -6,6 +6,7 @@ from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 
+from apps.providers.scrapers.base import ScrapedPrice
 from apps.providers.scrapers.registry import get as get_scraper
 
 from .models import Asset, AssetPriceSnapshot
@@ -52,7 +53,7 @@ def refresh_scraped_assets(*, user) -> RefreshResult:
     failed: list[tuple[int, str]] = [(a.id, "no source_url") for a in assets if not a.source_url]
     fetchable = [a for a in assets if a.source_url]
 
-    fetched: list[tuple[Asset, object | None, str]] = []
+    fetched: list[tuple[Asset, ScrapedPrice | None, str]] = []
     if fetchable:
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
             future_to_asset = {pool.submit(_safe_scrape, scraper, a): a for a in fetchable}
@@ -77,7 +78,11 @@ def refresh_scraped_assets(*, user) -> RefreshResult:
     return RefreshResult(updated=updated, failed=failed)
 
 
-def _safe_scrape(scraper, asset: Asset) -> tuple[object | None, str]:
+def _safe_scrape(scraper, asset: Asset) -> tuple[ScrapedPrice | None, str]:
+    """Worker-thread wrapper around `scraper.fetch` — never raises.
+
+    Returns (ScrapedPrice, "") on success or (None, error_message) on any failure.
+    """
     try:
         return scraper.fetch(asset.source_url, selector=asset.css_selector or ""), ""
     except Exception as exc:
