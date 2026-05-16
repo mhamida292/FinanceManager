@@ -13,6 +13,7 @@ Tests pass `runner=` to skip the thread and run synchronously.
 """
 from __future__ import annotations
 
+import concurrent.futures
 import threading
 from datetime import datetime
 from typing import Callable
@@ -74,14 +75,24 @@ def _run_sync(user_id: int, run_id: int) -> None:
     try:
         user = User.objects.get(pk=user_id)
 
+        institutions = list(Institution.objects.for_user(user).exclude(provider="simplefin"))
         institution_errors: list[str] = []
         transactions_total = 0
-        for inst in Institution.objects.for_user(user).exclude(provider="simplefin"):
+
+        def _sync_one(inst):
             try:
-                bank_result = sync_institution(inst)
-                transactions_total += bank_result.transactions_created
+                return inst, sync_institution(inst), None
             except Exception as exc:
-                institution_errors.append(f"{inst.effective_name}: {exc}")
+                return inst, None, exc
+            finally:
+                connections.close_all()  # each pool thread owns its own DB connection
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+            for inst, result, exc in pool.map(_sync_one, institutions):
+                if exc:
+                    institution_errors.append(f"{inst.effective_name}: {exc}")
+                else:
+                    transactions_total += result.transactions_created
 
         refreshed_holdings = refresh_manual_prices(user=user)
         asset_result = refresh_scraped_assets(user=user)

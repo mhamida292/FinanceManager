@@ -269,6 +269,11 @@
         btn.style.opacity = "0.5";
         if (!polling) startPolling();
       } else {
+        if (polling) {
+          // Was running and just finished — reload so balances/transactions are fresh.
+          window.location.reload();
+          return;
+        }
         btn.disabled = false;
         btn.textContent = "⟳";
         btn.style.opacity = "";
@@ -293,8 +298,7 @@
       tick();
     }
 
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
+    function triggerSync() {
       btn.disabled = true;
       btn.textContent = "…";
       btn.style.opacity = "0.5";
@@ -305,6 +309,11 @@
       }).finally(function () {
         startPolling();
       });
+    }
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      triggerSync();
     });
 
     // Refresh the visible "Xm ago" text every 30s without re-fetching.
@@ -314,7 +323,14 @@
       }
     }, 30000);
 
-    fetchStatus();
+    var STALE_MS = 60 * 60 * 1000; // 1 hour
+
+    fetchStatus().then(function () {
+      // Auto-sync on page load if data is stale (>1 hour) or never synced.
+      var iso = timeEl.dateTime;
+      var stale = !iso || (Date.now() - new Date(iso).getTime() > STALE_MS);
+      if (stale && !btn.disabled) triggerSync();
+    });
   })();
 </script>
 
