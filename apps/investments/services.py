@@ -169,7 +169,7 @@ def _snapshot_total(account: InvestmentAccount) -> None:
     total = sum(
         (h.market_value for h in account.holdings.all()),
         start=Decimal("0"),
-    )
+    ) + account.cash_balance
     PortfolioSnapshot.objects.update_or_create(
         investment_account=account,
         date=date.today(),
