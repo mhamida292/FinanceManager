@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load money %}
+{% load networth_chart %}
 {% block title %}Investments{% endblock %}
 {% block content %}
 
@@ -24,6 +25,11 @@
     </form>
     <a href="{% url 'investments:add_account' %}" class="font-bold px-4 py-2 rounded" style="background: var(--accent-positive); color: var(--bg);">+ Manual account</a>
   </div>
+</div>
+
+<div class="rounded border p-4 mb-6" style="background: var(--surface); border-color: var(--border);">
+  <div class="text-[10px] uppercase tracking-widest mb-3" style="color: var(--dim);">Portfolio value · 90 days</div>
+  {% value_chart portfolio_history 90 "Portfolio value" %}
 </div>
 
 {% if messages %}

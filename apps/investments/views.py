@@ -1,8 +1,10 @@
+from collections import defaultdict
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Sum
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -10,11 +12,40 @@ from django.views.decorators.http import require_http_methods
 
 from apps.banking.models import Institution
 
-from .models import Holding, InvestmentAccount
+from .models import Holding, InvestmentAccount, PortfolioSnapshot
 from .services import (
     create_manual_account, refresh_manual_prices, sync_simplefin_investments,
     update_cost_basis, upsert_manual_holding,
 )
+
+
+def _portfolio_history(user, days: int = 90) -> list[Decimal]:
+    """Aggregate PortfolioSnapshot rows by date for ``days``, carry-forward filling gaps."""
+    cutoff = date.today() - timedelta(days=days - 1)
+    snaps_by_date: dict[date, Decimal] = defaultdict(Decimal)
+    for snap in (
+        PortfolioSnapshot.objects.for_user(user)
+        .filter(date__gte=cutoff)
+        .values("date", "total_value")
+        .order_by("date")
+    ):
+        snaps_by_date[snap["date"]] += snap["total_value"]
+    seed_row = (
+        PortfolioSnapshot.objects.for_user(user)
+        .filter(date__lt=cutoff)
+        .order_by("-date")
+        .values("date")
+        .annotate(total=Sum("total_value"))
+        .first()
+    )
+    last = seed_row["total"] if seed_row else Decimal("0")
+    result = []
+    for i in range(days):
+        d = cutoff + timedelta(days=i)
+        if d in snaps_by_date:
+            last = snaps_by_date[d]
+        result.append(last)
+    return result
 
 
 def _decimal_or_none(raw: str) -> Decimal | None:
@@ -58,11 +89,13 @@ def investments_list(request):
     portfolio_holdings_value = sum((s["holdings_value"] for s in sections), Decimal("0"))
     portfolio_gain = (portfolio_holdings_value - portfolio_cost) if portfolio_cost else None
     portfolio_gain_pct = (portfolio_gain / portfolio_cost * 100) if portfolio_gain is not None and portfolio_cost else None
+    portfolio_history = _portfolio_history(request.user, days=90)
     return render(request, "investments/investments_list.html", {
         "sections": sections,
         "portfolio_value": portfolio_value,
         "portfolio_gain": portfolio_gain,
         "portfolio_gain_pct": portfolio_gain_pct,
+        "portfolio_history": portfolio_history,
     })
 
 
